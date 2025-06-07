@@ -108,23 +108,18 @@ class LoadDataset(object):
         return seqs_labels_path_pair
 
     def split_dataset(self, seqs_labels_path_pair, seed=42):
+        seqs_flatten = []
+        for pair in seqs_labels_path_pair:
+            seqs_flatten.extend(pair)
+
         random.seed(seed)
-        random.shuffle(seqs_labels_path_pair)
+        random.shuffle(seqs_flatten)
 
-        total = len(seqs_labels_path_pair)
-        n_train = int(total * 0.6)
+        total = len(seqs_flatten)
         n_val = int(total * 0.2)
-        n_test = total - n_train - n_val  # ensure full coverage
+        n_train = total - 2 * n_val
 
-        train_split = seqs_labels_path_pair[:n_train]
-        val_split = seqs_labels_path_pair[n_train:n_train + n_val]
-        test_split = seqs_labels_path_pair[n_train + n_val:]
-
-        train_pairs, val_pairs, test_pairs = [], [], []
-        for group in train_split:
-            train_pairs.extend(group)
-        for group in val_split:
-            val_pairs.extend(group)
-        for group in test_split:
-            test_pairs.extend(group)
-        return train_pairs, val_pairs, test_pairs
+        train_split = seqs_flatten[:n_train]
+        val_split = seqs_flatten[n_train:n_train + n_val]
+        test_split = seqs_flatten[n_train + n_val:]
+        return train_split, val_split, test_split

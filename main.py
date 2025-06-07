@@ -48,9 +48,9 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     # clear cache
-    for file_path in glob.glob(os.path.join(rf"{args.base_dir}\cache", "*")):
-        if os.path.isfile(file_path):
-            os.remove(file_path)
+    # for file_path in glob.glob(os.path.join(rf"{args.base_dir}\cache", "*")):
+    #     if os.path.isfile(file_path):
+    #         os.remove(file_path)
 
     # setup seed
     torch.manual_seed(args.seed)
@@ -85,7 +85,7 @@ if __name__ == '__main__':
         snn_model = SAS(args)
         trainer = trainer_broderick2019
     elif args.datasets == 'brennan2019':
-        args.n_negatives = 50
+        args.n_negatives = 200
         args.n_subjects = 32
         args.n_channels = 60
         args.n_slice = 1

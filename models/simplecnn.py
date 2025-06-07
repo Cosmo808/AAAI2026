@@ -7,38 +7,6 @@ from models.labram import generate_labram
 from einops import rearrange
 
 
-class LBM(nn.Module):
-    def __init__(self, in_channels, feature_dim, n_subjects):
-        super().__init__()
-        self.device = "cuda"
-
-        self.lbm = generate_labram(ckpt_path=r"../ckpt/labram-base.pth")
-        for param in self.lbm.parameters():
-            param.requires_grad = False
-
-        self.subject_layer = SubjectLayers(in_channels, in_channels, n_subjects)
-
-        self.final = nn.Sequential(
-            nn.Conv1d(in_channels, 2 * in_channels, kernel_size=1, stride=1),
-            nn.BatchNorm1d(2 * in_channels),
-            # nn.GroupNorm(num_groups=16, num_channels=2 * out_channels),
-            nn.Dropout(0.5),
-            nn.GELU(),
-            nn.ConvTranspose1d(2 * in_channels, feature_dim, kernel_size=1, stride=1),
-        )
-
-    def forward(self, x, subjects):
-        # x size: [B, C, 2000]
-        self.lbm.eval()
-        B, C, _ = x.shape
-        x = self.subject_layer(x, subjects)
-        x = rearrange(x, 'B C (A T) -> B C A T', T=200)
-        x = self.lbm(x)
-        x = rearrange(x, 'B (C A) T -> B C (A T)', T=200, C=C)
-        x = self.final(x)
-        return x
-
-
 class SimpleConv(nn.Module):
     def __init__(self, in_channels, out_channels, num_layers, feature_dim, n_subjects, dilation_factors=None):
         super(SimpleConv, self).__init__()
@@ -66,8 +34,8 @@ class SimpleConv(nn.Module):
 
         self.final = nn.Sequential(
             nn.Conv1d(in_channels if num_layers == 0 else out_channels, 2 * out_channels, kernel_size=1, stride=1),
-            nn.BatchNorm1d(2 * out_channels),
-            # nn.GroupNorm(num_groups=16, num_channels=2 * out_channels),
+            # nn.BatchNorm1d(2 * out_channels),
+            nn.GroupNorm(num_groups=16, num_channels=2 * out_channels),
             nn.Dropout(dropout_ratio),
             nn.GELU(),
             nn.ConvTranspose1d(2 * out_channels, feature_dim, kernel_size=1, stride=1),

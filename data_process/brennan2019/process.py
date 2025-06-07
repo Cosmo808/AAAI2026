@@ -64,80 +64,82 @@ def main():
         duration = np.array(block_events['duration'].tolist())
         num = 0
 
-        # eegs = []
-        # labels = []
-        # for i, (s, d) in enumerate(zip(timestamp, duration)):
-        #     if d == np.inf:
-        #         d = word_events['start'].tolist()[-1] + word_events['duration'].tolist()[-1] - s
-        #
-        #     if d >= 2 * sample_t:
-        #         continue
-        #
-        #     _, rep = wav.wav2vec(sound_event=sound_events, start=s, stop=(s + d))
-        #     if rep is not None:
-        #         rep = rep.permute(0, 2, 1)
-        #         rep = F.interpolate(rep, size=resample_length)
-        #         labels.append(rep.squeeze(0).detach().cpu())
-        #         slice_data = torch.tensor(data[:, int(s * sample_rate):int((s + d) * sample_rate)])
-        #         resample_data = wav.resample(slice_data, sample_num=resample_length)
-        #         eegs.append(resample_data.cpu())
-        #
-        #     if len(eegs) == seq_length:
-        #         eegs = torch.stack(eegs)
-        #         labels = torch.stack(labels)
-        #         events = b2e.forward(eegs)
-        #         torch.save(eegs, rf"{seq_dir}\{subject}\{num}.pth")
-        #         torch.save(labels, rf"{label_dir}\{subject}\{num}.pth")
-        #         torch.save(events, rf"{event_dir}\{subject}\{num}.pth")
-        #         eegs, labels = [], []
-        #         num += 1
+        eegs = []
+        labels = []
+        for i, (s, d) in enumerate(zip(timestamp, duration)):
+            if d == np.inf:
+                d = word_events['start'].tolist()[-1] + word_events['duration'].tolist()[-1] - s
 
-        # concat
-        random.seed(42)  # for reproducibility
-        combo_count = 0
-        used_combos = set()
-
-        while combo_count < 90:
-            indices = tuple(sorted(random.sample(range(len(timestamp)), seq_length)))
-            if indices in used_combos:
+            if d >= 2 * sample_t:
                 continue
-            used_combos.add(indices)
 
-            eegs = []
-            labels = []
-
-            for idx in indices:
-                s = timestamp[idx]
-                d = duration[idx]
-                if d == np.inf:
-                    d = word_events['start'].tolist()[-1] + word_events['duration'].tolist()[-1] - s
-                if d >= 2 * sample_t:
-                    continue
-
-                _, rep = wav.wav2vec(sound_event=sound_events, start=s, stop=(s + d))
-                if rep is None:
-                    continue
-
+            _, rep = wav.wav2vec(sound_event=sound_events, start=s, stop=(s + d))
+            if rep is not None:
                 rep = rep.permute(0, 2, 1)
                 rep = F.interpolate(rep, size=resample_length)
                 labels.append(rep.squeeze(0).detach().cpu())
-
                 slice_data = torch.tensor(data[:, int(s * sample_rate):int((s + d) * sample_rate)])
                 resample_data = wav.resample(slice_data, sample_num=resample_length)
                 eegs.append(resample_data.cpu())
 
-            if len(eegs) != seq_length:
-                continue  # skip if any rep was None or d too long
+            if len(eegs) == seq_length:
+                eegs = torch.stack(eegs)
+                labels = torch.stack(labels)
+                events = b2e.forward(eegs)
+                torch.save(eegs, rf"{seq_dir}\{subject}\{num}.pth")
+                torch.save(labels, rf"{label_dir}\{subject}\{num}.pth")
+                torch.save(events, rf"{event_dir}\{subject}\{num}.pth")
+                # eegs, labels = [], []
+                eegs = [eegs[i] for i in range(1, seq_length)]
+                labels = [labels[i] for i in range(1, seq_length)]
+                num += 1
 
-            eegs_tensor = torch.stack(eegs)
-            labels_tensor = torch.stack(labels)
-            events = b2e.forward(eegs_tensor)
-
-            torch.save(eegs_tensor, rf"{seq_dir}\{subject}\rand_{combo_count}.pth")
-            torch.save(labels_tensor, rf"{label_dir}\{subject}\rand_{combo_count}.pth")
-            torch.save(events, rf"{event_dir}\{subject}\rand_{combo_count}.pth")
-
-            combo_count += 1
+        # concat
+        # random.seed(42)  # for reproducibility
+        # combo_count = 0
+        # used_combos = set()
+        #
+        # while combo_count < 90:
+        #     indices = tuple(sorted(random.sample(range(len(timestamp)), seq_length)))
+        #     if indices in used_combos:
+        #         continue
+        #     used_combos.add(indices)
+        #
+        #     eegs = []
+        #     labels = []
+        #
+        #     for idx in indices:
+        #         s = timestamp[idx]
+        #         d = duration[idx]
+        #         if d == np.inf:
+        #             d = word_events['start'].tolist()[-1] + word_events['duration'].tolist()[-1] - s
+        #         if d >= 2 * sample_t:
+        #             continue
+        #
+        #         _, rep = wav.wav2vec(sound_event=sound_events, start=s, stop=(s + d))
+        #         if rep is None:
+        #             continue
+        #
+        #         rep = rep.permute(0, 2, 1)
+        #         rep = F.interpolate(rep, size=resample_length)
+        #         labels.append(rep.squeeze(0).detach().cpu())
+        #
+        #         slice_data = torch.tensor(data[:, int(s * sample_rate):int((s + d) * sample_rate)])
+        #         resample_data = wav.resample(slice_data, sample_num=resample_length)
+        #         eegs.append(resample_data.cpu())
+        #
+        #     if len(eegs) != seq_length:
+        #         continue  # skip if any rep was None or d too long
+        #
+        #     eegs_tensor = torch.stack(eegs)
+        #     labels_tensor = torch.stack(labels)
+        #     events = b2e.forward(eegs_tensor)
+        #
+        #     torch.save(eegs_tensor, rf"{seq_dir}\{subject}\rand_{combo_count}.pth")
+        #     torch.save(labels_tensor, rf"{label_dir}\{subject}\rand_{combo_count}.pth")
+        #     torch.save(events, rf"{event_dir}\{subject}\rand_{combo_count}.pth")
+        #
+        #     combo_count += 1
 
 
 if __name__ == '__main__':

@@ -320,8 +320,8 @@ class Trainer(object):
         print("snn model save in " + self.save_dir_snn)
 
     def MCMC_init(self, mode):
-        for x, _, _, _ in self.data_loaders['train']:
-            B, L, C, T = x.shape  # B, 5, 60, 1000
+        for data_batch in self.data_loaders['train']:
+            B, L, C, T = data_batch[0].shape  # B, 5, 60, 1000
             break
         duration = T / self.args.sr  # 8.3333 seconds
         self.n_frames = round(duration * self.args.fps)  # 25 frames

@@ -57,14 +57,14 @@ class Trainer(object):
         self.negative_pool = None
         self.candidate_val = []
         self.candidate_test = []
-        for _, y, _, _ in self.data_loaders['val']:
-            self.candidate_val.append(y)
-        for _, y, _, _ in self.data_loaders['test']:
-            self.candidate_test.append(y)
-        self.candidate_val = torch.cat(self.candidate_val, dim=0).float()
-        self.candidate_test = torch.cat(self.candidate_test, dim=0).float()
-        self.candidate_val = rearrange(self.candidate_val, 'A L C T -> (A L) C T')
-        self.candidate_test = rearrange(self.candidate_test, 'A L C T -> (A L) C T')
+        # for data_batch in self.data_loaders['val']:
+        #     self.candidate_val.append(data_batch[1])
+        # for data_batch in self.data_loaders['test']:
+        #     self.candidate_test.append(data_batch[1])
+        # self.candidate_val = torch.cat(self.candidate_val, dim=0).float()
+        # self.candidate_test = torch.cat(self.candidate_test, dim=0).float()
+        # self.candidate_val = rearrange(self.candidate_val, 'A L C T -> (A L) C T')
+        # self.candidate_test = rearrange(self.candidate_test, 'A L C T -> (A L) C T')
 
     def ann_one_batch(self, x, y, events, subjects, training):
         B, L, C, T = x.shape
@@ -108,8 +108,10 @@ class Trainer(object):
 
         else:
             assert y_sas.shape[0] <= 50
-
-            total = y_sas.shape[0] + self.candidate_val.shape[0]
+            if self.epoch < self.args.max_epoch:
+                total = y_sas.shape[0] + self.candidate_val.shape[0]
+            else:
+                total = y_sas.shape[0] + self.candidate_test.shape[0]
             C, T = y_sas.shape[1], y_sas.shape[2]
 
             candidate_all = torch.empty((total, C, T), device=self.device, dtype=y_sas.dtype)
@@ -320,8 +322,8 @@ class Trainer(object):
         print("snn model save in " + self.save_dir_snn)
 
     def MCMC_init(self, mode):
-        for x, _, _, _ in self.data_loaders['train']:
-            B, L, C, T = x.shape  # B, 5, 128, 600
+        for data_batch in self.data_loaders['train']:
+            B, L, C, T = data_batch[0].shape  # B, 5, 128, 600
             break
         duration = T / self.args.sr  # 5 seconds
         self.n_frames = int(duration * self.args.fps)  # 25 frames

@@ -54,6 +54,8 @@ class Model(nn.Module):
             x = rearrange(x, 'B L C T -> (B L) C T')
             if subjects is None:
                 subjects = torch.zeros(B * L).to(torch.int64).to(x.device)
+            else:
+                subjects = rearrange(subjects, 'B L -> (B L)')
             x = self.backbone(x, subjects)
             return x
 
