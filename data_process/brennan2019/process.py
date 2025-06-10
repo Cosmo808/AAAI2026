@@ -36,6 +36,7 @@ base_dir = r"E:\NIPS2026\datasets\brennan2019"
 seq_dir = rf'{base_dir}\seq'
 label_dir = rf'{base_dir}\labels'
 event_dir = rf'{base_dir}\events'
+text_dir = rf'{base_dir}\texts'
 
 
 def main():
@@ -47,6 +48,7 @@ def main():
         os.makedirs(rf"{seq_dir}\{subject}", exist_ok=True)
         os.makedirs(rf"{label_dir}\{subject}", exist_ok=True)
         os.makedirs(rf"{event_dir}\{subject}", exist_ok=True)
+        os.makedirs(rf"{text_dir}\{subject}", exist_ok=True)
 
         raw = mne.io.read_raw_fif(eeg_file, preload=True, verbose=0)
         data, times = raw[:, :]
@@ -62,11 +64,13 @@ def main():
         resample_length = int(sample_t * sample_rate)
         timestamp = np.array(block_events['start'].tolist())
         duration = np.array(block_events['duration'].tolist())
+        speech = block_events['uid'].tolist()
         num = 0
 
         eegs = []
         labels = []
-        for i, (s, d) in enumerate(zip(timestamp, duration)):
+        texts = []
+        for i, (s, d, t) in enumerate(zip(timestamp, duration, speech)):
             if d == np.inf:
                 d = word_events['start'].tolist()[-1] + word_events['duration'].tolist()[-1] - s
 
@@ -81,17 +85,20 @@ def main():
                 slice_data = torch.tensor(data[:, int(s * sample_rate):int((s + d) * sample_rate)])
                 resample_data = wav.resample(slice_data, sample_num=resample_length)
                 eegs.append(resample_data.cpu())
+                texts.append(t)
 
-            if len(eegs) == seq_length:
+            if len(texts) == seq_length:
                 eegs = torch.stack(eegs)
                 labels = torch.stack(labels)
                 events = b2e.forward(eegs)
                 torch.save(eegs, rf"{seq_dir}\{subject}\{num}.pth")
                 torch.save(labels, rf"{label_dir}\{subject}\{num}.pth")
                 torch.save(events, rf"{event_dir}\{subject}\{num}.pth")
+                torch.save(texts, rf"{text_dir}\{subject}\{num}.pth")
                 # eegs, labels = [], []
                 eegs = [eegs[i] for i in range(1, seq_length)]
                 labels = [labels[i] for i in range(1, seq_length)]
+                texts = [texts[i] for i in range(1, seq_length)]
                 num += 1
 
         # concat

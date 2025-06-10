@@ -55,16 +55,16 @@ class Trainer(object):
             print(f"Loading ann ckpt from {args.ckpt_ann}")
 
         self.negative_pool = None
-        self.candidate_val = []
-        self.candidate_test = []
-        for _, y, _, _ in self.data_loaders['val']:
-            self.candidate_val.append(y)
-        for _, y, _, _ in self.data_loaders['test']:
-            self.candidate_test.append(y)
-        self.candidate_val = torch.cat(self.candidate_val, dim=0).float()
-        self.candidate_test = torch.cat(self.candidate_test, dim=0).float()
-        self.candidate_val = rearrange(self.candidate_val, 'A L C T -> (A L) C T')
-        self.candidate_test = rearrange(self.candidate_test, 'A L C T -> (A L) C T')
+        # self.candidate_val = []
+        # self.candidate_test = []
+        # for _, y, _, _ in self.data_loaders['val']:
+        #     self.candidate_val.append(y)
+        # for _, y, _, _ in self.data_loaders['test']:
+        #     self.candidate_test.append(y)
+        # self.candidate_val = torch.cat(self.candidate_val, dim=0).float()
+        # self.candidate_test = torch.cat(self.candidate_test, dim=0).float()
+        # self.candidate_val = rearrange(self.candidate_val, 'A L C T -> (A L) C T')
+        # self.candidate_test = rearrange(self.candidate_test, 'A L C T -> (A L) C T')
 
     def ann_one_batch(self, x, y, events, subjects, training):
         B, L, C, T = x.shape

@@ -114,7 +114,7 @@ class LoadDataset(object):
 
     def get_alldata(self):
         alldata = AllData(self.seqs_labels_path_pair)
-        data_loader = DataLoader(alldata, batch_size=10, collate_fn=alldata.collate, shuffle=False, drop_last=False)
+        data_loader = DataLoader(alldata, batch_size=10, collate_fn=alldata.collate, shuffle=False, drop_last=True)
         return data_loader
 
     def load_path(self):

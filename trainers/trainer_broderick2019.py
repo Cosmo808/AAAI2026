@@ -327,14 +327,14 @@ class Trainer(object):
             break
         duration = T / self.args.sr  # 5 seconds
         self.n_frames = int(duration * self.args.fps)  # 25 frames
-        # expect_spike_idxes = torch.ones(size=[len(self.data_loaders['train']), self.args.bs, L]) * (self.n_frames - 1)
+        # expect_spike_idxes = torch.ones(size=[len(self.data_loaders['train']), B, L]) * (self.n_frames - 1)
         self.expect_spike_idxes = torch.stack([
             torch.sort(torch.randperm(self.n_frames)[:self.args.n_slice])[0]
-            for _ in range(len(self.data_loaders['train']) * self.args.bs * L)
-        ]).view(len(self.data_loaders['train']), self.args.bs, L, self.args.n_slice)
+            for _ in range(len(self.data_loaders['train']) * B * L)
+        ]).view(len(self.data_loaders['train']), B, L, self.args.n_slice)
         self.spike_idxes = torch.zeros_like(self.expect_spike_idxes) - 1
         self.spike_idxes[:, :, :, 0] = self.n_frames - 1
-        self.downstream_metric = torch.zeros(size=[len(self.data_loaders['train']), self.args.bs], device=self.device)
+        self.downstream_metric = torch.zeros(size=[len(self.data_loaders['train']), B], device=self.device)
         if mode == 'min':
             self.downstream_metric += np.inf
 

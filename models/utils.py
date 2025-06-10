@@ -2,6 +2,9 @@ import pdb
 from timeit import default_timer as timer
 import math
 import torch.cuda
+import torch.nn as nn
+import torch.optim as optim
+from torch.utils.data import DataLoader, TensorDataset
 import numpy as np
 import typing as tp
 from pathlib import Path
@@ -295,3 +298,94 @@ class wav_processor:
             hidden_states = torch.stack(hidden_states)
         # hidden_states[0] is equal to last_hidden_state
         return hidden_states, last_hidden_state
+
+
+class RidgeRegression(nn.Module):
+    def __init__(self, input_dim, output_dim=1, alpha=1.0, device=None):
+        super(RidgeRegression, self).__init__()
+        self.linear = nn.Linear(input_dim, output_dim, bias=True)
+        self.alpha = alpha  # L2 regularization strength
+        self.device = device or ('cuda' if torch.cuda.is_available() else 'cpu')
+        self.to(self.device)
+
+    def forward(self, x):
+        return self.linear(x)
+
+    def train_model(self, X, y, epochs=1000, lr=1e-3, verbose=False):
+        X = X.to(self.device)
+        y = y.to(self.device)
+
+        optimizer = optim.SGD(self.parameters(), lr=lr)
+        criterion = nn.MSELoss()
+
+        for epoch in range(epochs):
+            self.train()
+            optimizer.zero_grad()
+
+            outputs = self(X)
+            loss = criterion(outputs, y)
+
+            # Ridge (L2) regularization term: alpha * ||W||^2
+            l2_reg = self.alpha * torch.norm(self.linear.weight, p=2) ** 2
+            total_loss = loss + l2_reg
+
+            total_loss.backward()
+            optimizer.step()
+
+            if verbose and (epoch + 1) % 100 == 0:
+                print(f'Epoch [{epoch + 1}/{epochs}], Loss: {total_loss.item():.4f}')
+
+    def predict(self, X):
+        self.eval()
+        with torch.no_grad():
+            return self(X.to(self.device))
+
+
+class ConvLinear(nn.Module):
+    def __init__(self, dim1, dim2):
+        super().__init__()
+
+        self.device = 'cuda' if torch.cuda.is_available() else 'cpu'
+
+        self.conv = nn.Conv1d(dim1, dim1 // 8, kernel_size=3, stride=1, padding=1, dilation=1)
+        self.linear = nn.Linear(dim1 // 8 * dim2, dim1)
+        self.to(self.device)
+
+    def forward(self, x):  # x: [B, 768, input_dim]
+        B, dim1, dim2 = x.shape
+        x = self.conv(x)  # [B, 769//8, 600]
+        x = x.view(B, dim1 // 8 * dim2)  # [B, 769//8 * 600]
+        x = self.linear(x)  # [B, 768]
+        return x
+
+    def train_model(self, X, y, epochs=1000, lr=1e-3, verbose=False):
+        dataset = TensorDataset(X, y)
+        loader = DataLoader(dataset, batch_size=25, shuffle=True)
+
+        optimizer = torch.optim.SGD(self.parameters(), lr=lr)
+        criterion = nn.MSELoss()
+
+        for epoch in range(epochs):
+            self.train()
+            total_loss = 0.0
+
+            for xb, yb in loader:
+                xb, yb = xb.to(self.device), yb.to(self.device)
+
+                optimizer.zero_grad()
+                out = self(xb)
+                loss = criterion(out, yb)
+
+                loss.backward()
+                optimizer.step()
+
+                total_loss += loss.detach().item()
+
+            if verbose and (epoch + 1) % 50 == 0:
+                avg_loss = total_loss / len(loader)
+                print(f"Epoch {epoch+1}, Loss: {avg_loss:.4f}")
+
+    def predict(self, X):
+        self.eval()
+        with torch.no_grad():
+            return self.forward(X.to(self.device))
