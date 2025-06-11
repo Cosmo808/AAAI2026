@@ -18,7 +18,7 @@ class CustomDataset(Dataset):
         return len((self.seqs_labels_path_pair))
 
     def __getitem__(self, idx):
-        subject_id = int(self.seqs_labels_path_pair[idx][0].split('\\')[-2][1]) - 1
+        subject_id = int(self.seqs_labels_path_pair[idx][0].split('\\')[-2].split('_')[0][1:]) - 1
         seq_path = self.seqs_labels_path_pair[idx][0]
         label_path = self.seqs_labels_path_pair[idx][1]
         event_path = self.seqs_labels_path_pair[idx][2]
@@ -49,7 +49,7 @@ class AllData(Dataset):
         return len((self.seqs_labels_path_pair))
 
     def __getitem__(self, idx):
-        subject_id = int(self.seqs_labels_path_pair[idx][0].split('\\')[-2][1]) - 1
+        subject_id = int(self.seqs_labels_path_pair[idx][0].split('\\')[-2].split('_')[0][1:]) - 1
         seq_path = self.seqs_labels_path_pair[idx][0]
         label_path = self.seqs_labels_path_pair[idx][1]
         event_path = self.seqs_labels_path_pair[idx][2]
@@ -146,12 +146,11 @@ class LoadDataset(object):
 
     def split_dataset(self, seqs_labels_path_pair, seed=42):
         random.seed(seed)
-        random.shuffle(seqs_labels_path_pair)
 
+        random.shuffle(seqs_labels_path_pair)
         total = len(seqs_labels_path_pair)
         n_train = int(total * 0.6)
         n_val = int(total * 0.2)
-        n_test = total - n_train - n_val  # ensure full coverage
 
         train_split = seqs_labels_path_pair[:n_train]
         val_split = seqs_labels_path_pair[n_train:n_train + n_val]

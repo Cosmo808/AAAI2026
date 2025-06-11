@@ -55,16 +55,19 @@ class Trainer(object):
             print(f"Loading ann ckpt from {args.ckpt_ann}")
 
         self.negative_pool = None
-        # self.candidate_val = []
-        # self.candidate_test = []
-        # for _, y, _, _ in self.data_loaders['val']:
-        #     self.candidate_val.append(y)
-        # for _, y, _, _ in self.data_loaders['test']:
-        #     self.candidate_test.append(y)
-        # self.candidate_val = torch.cat(self.candidate_val, dim=0).float()
-        # self.candidate_test = torch.cat(self.candidate_test, dim=0).float()
-        # self.candidate_val = rearrange(self.candidate_val, 'A L C T -> (A L) C T')
-        # self.candidate_test = rearrange(self.candidate_test, 'A L C T -> (A L) C T')
+        self.candidate_val = []
+        self.candidate_test = []
+        try:
+            for _, y, _, _ in self.data_loaders['val']:
+                self.candidate_val.append(y)
+            for _, y, _, _ in self.data_loaders['test']:
+                self.candidate_test.append(y)
+            self.candidate_val = torch.cat(self.candidate_val, dim=0).float()
+            self.candidate_test = torch.cat(self.candidate_test, dim=0).float()
+            self.candidate_val = rearrange(self.candidate_val, 'A L C T -> (A L) C T')
+            self.candidate_test = rearrange(self.candidate_test, 'A L C T -> (A L) C T')
+        except KeyError:
+            pass
 
     def ann_one_batch(self, x, y, events, subjects, training):
         B, L, C, T = x.shape
@@ -129,15 +132,13 @@ class Trainer(object):
 
             scores_all = self.criterion_ann.get_scores(pred, candidate_all)
             topk_all = scores_all.topk(k=10, dim=1, sorted=False).indices
-            correct_all = (topk_all == ground_truth).sum().item()
-            total_all = scores_all.shape[0]
+            correct_all = (topk_all == ground_truth).sum(dim=1).tolist()
 
             scores_50 = self.criterion_ann.get_scores(pred, candidate_50)
             topk_50 = scores_50.topk(k=10, dim=1, sorted=False).indices
-            correct_50 = (topk_50 == ground_truth).sum().item()
-            total_50 = scores_50.shape[0]
+            correct_50 = (topk_50 == ground_truth).sum(dim=1).tolist()
 
-            return correct_all, total_all, correct_50, total_50
+            return correct_all, correct_50
 
     def snn_one_batch(self, x, y, events, subjects, training=False, slice=False):
         # x: [B, 20, 6, 6000]
@@ -238,18 +239,16 @@ class Trainer(object):
         else:
             torch.cuda.empty_cache()
             self.ann.eval()
-            corrects10_50, corrects10_all, totals10_50, totals10_all = 0, 0, 0, 0
+            corrects10_50, corrects10_all = [], []
             for x, y, events, subjects in tqdm(self.data_loaders[mode]):
                 self.iter += 1
                 spike_loss = self.snn_one_batch(x, y, events, subjects, training=False)
-                correct_all, total_all, correct_50, total_50 = self.ann_one_batch(x, y, events, subjects, training=False)
+                correct_all, correct_50 = self.ann_one_batch(x, y, events, subjects, training=False)
                 corrects10_50 += correct_50
                 corrects10_all += correct_all
-                totals10_50 += total_50
-                totals10_all += total_all
 
-            top10_50 = corrects10_50 / totals10_50
-            top10_all = corrects10_all / totals10_all
+            top10_50 = sum(corrects10_50) / len(corrects10_50)
+            top10_all = sum(corrects10_all) / len(corrects10_all)
             return top10_50, top10_all, spike_loss
 
     def train(self):
@@ -325,14 +324,14 @@ class Trainer(object):
             break
         duration = T / self.args.sr  # 8.3333 seconds
         self.n_frames = round(duration * self.args.fps)  # 25 frames
-        # expect_spike_idxes = torch.ones(size=[len(self.data_loaders['train']), self.args.bs, L]) * (self.n_frames - 1)
+        # expect_spike_idxes = torch.ones(size=[len(self.data_loaders['train']), B, L]) * (self.n_frames - 1)
         self.expect_spike_idxes = torch.stack([
             torch.sort(torch.randperm(self.n_frames)[:self.args.n_slice])[0]
-            for _ in range(len(self.data_loaders['train']) * self.args.bs * L)
-        ]).view(len(self.data_loaders['train']), self.args.bs, L, self.args.n_slice)
+            for _ in range(len(self.data_loaders['train']) * B * L)
+        ]).view(len(self.data_loaders['train']), B, L, self.args.n_slice)
         self.spike_idxes = torch.zeros_like(self.expect_spike_idxes) - 1
         self.spike_idxes[:, :, :, 0] = self.n_frames - 1
-        self.downstream_metric = torch.zeros(size=[len(self.data_loaders['train']), self.args.bs], device=self.device)
+        self.downstream_metric = torch.zeros(size=[len(self.data_loaders['train']), B], device=self.device)
         if mode == 'min':
             self.downstream_metric += np.inf
 

@@ -17,19 +17,21 @@ class CustomDataset(Dataset):
         return len((self.seqs_labels_path_pair))
 
     def __getitem__(self, idx):
+        subject_id = int(self.seqs_labels_path_pair[idx][0].split('\\')[-2].split('-')[-1]) - 1
         seq_path = self.seqs_labels_path_pair[idx][0]
         label_path = self.seqs_labels_path_pair[idx][1]
         event_path = self.seqs_labels_path_pair[idx][2]
         seq = np.load(seq_path)
         label = np.load(label_path)
         event = torch.load(event_path, map_location='cpu', weights_only=False)
-        return seq, label, event
+        return seq, label, event, subject_id
 
     def collate(self, batch):
         x_seq = np.array([x[0] for x in batch])
         y_label = np.array([x[1] for x in batch])
         z_event = np.array([x[2] for x in batch])
-        return to_tensor(x_seq), to_tensor(y_label).long(), to_tensor(z_event).float()
+        w_s = torch.tensor([x[3] for x in batch]).long().unsqueeze(1).repeat(1, x_seq.shape[1])
+        return to_tensor(x_seq), to_tensor(y_label).long(), to_tensor(z_event).float(), w_s
 
 
 class LoadDataset(object):

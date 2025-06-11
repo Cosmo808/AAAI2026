@@ -53,7 +53,7 @@ def evaluate_model(model_cls, X, y, epochs=500, cv=2, lr=1e-3):
             scores.append(float('nan'))
         else:
             scores.append(corr)
-    return np.nanmean(scores), np.nanstd(scores)
+    return np.abs(np.nanmean(scores)), np.abs(np.nanstd(scores))
 
 
 def pearson_corr_torch(x: torch.Tensor, y: torch.Tensor):
@@ -169,86 +169,86 @@ if __name__ == '__main__':
     # args.ckpt_ann = rf"E:\NIPS2026\ckpt\{args.datasets}\{args.model}+sas-brain\ann_epoch36_10@50_0.82305_10@All_0.23695.pth"
     # args.ckpt_snn = rf"E:\NIPS2026\ckpt\{args.datasets}\{args.model}+sas-brain\snn_epoch36_spike_0.02528.pth"
     scoring = make_scorer(lambda yt, yp: pearsonr(yt, yp)[0])
-    model = make_pipeline(StandardScaler(), Ridge(alpha=1.0, solver='sag'))
-    cv = KFold(5, shuffle=True)
+    ridge_model = make_pipeline(StandardScaler(), Ridge(alpha=1.0, solver='sag'))
+    cv = KFold(2, shuffle=True)
 
     # evaluate
-    if os.path.isfile(rf"{args.base_dir}\cache\preds.pth"):
-        preds = torch.load(rf"{args.base_dir}\cache\preds.pth", map_location='cpu', weights_only=False)
-        wordfs = torch.load(rf"{args.base_dir}\cache\wordfs.pth", map_location='cpu', weights_only=False)
-        word_embs = torch.load(rf"{args.base_dir}\cache\word_embs.pth", map_location='cpu', weights_only=False)
-        sentence_embs = torch.load(rf"{args.base_dir}\cache\sentence_embs.pth", map_location='cpu', weights_only=False)
-        print("Data load success.")
-    else:
-        trainer = trainer.Trainer({'train': data_loaders}, eeg_model, snn_model, None, None, args)
-        word_encoder = spacy.load("en_core_web_lg")
-        sentence_encoder = LaserEncoderPipeline(lang="eng_Latn")
-        sentence_tokenizer = initialize_tokenizer(lang="eng_Latn")
+    # if os.path.isfile(rf"{args.base_dir}\cache\preds.pth"):
+    #     preds = torch.load(rf"{args.base_dir}\cache\preds.pth", map_location='cpu', weights_only=False)
+    #     wordfs = torch.load(rf"{args.base_dir}\cache\wordfs.pth", map_location='cpu', weights_only=False)
+    #     word_embs = torch.load(rf"{args.base_dir}\cache\word_embs.pth", map_location='cpu', weights_only=False)
+    #     sentence_embs = torch.load(rf"{args.base_dir}\cache\sentence_embs.pth", map_location='cpu', weights_only=False)
+    #     print("Data load success.")
+    # else:
+    trainer = trainer.Trainer({'train': data_loaders}, eeg_model, snn_model, None, None, args)
+    word_encoder = spacy.load("en_core_web_lg")
+    sentence_encoder = LaserEncoderPipeline(lang="eng_Latn")
+    sentence_tokenizer = initialize_tokenizer(lang="eng_Latn")
 
-        subject_preds = defaultdict(list)
-        subject_wordfs = defaultdict(list)
-        subject_word_embs = defaultdict(list)
-        subject_sentence_embs = defaultdict(list)
+    subject_preds = defaultdict(list)
+    subject_wordfs = defaultdict(list)
+    subject_word_embs = defaultdict(list)
+    subject_sentence_embs = defaultdict(list)
 
-        stop_loop = False
-        subjects_num = 5
-        for x, y, events, subjects, texts in tqdm(data_loaders):
-            if stop_loop:
-                break
+    stop_loop = False
+    subjects_num = 5
+    for x, y, events, subjects, texts in tqdm(data_loaders):
+        if stop_loop:
+            break
 
-            with torch.no_grad():
-                trainer.iter = 0
-                if args.ckpt_snn is not None:
-                    _ = trainer.snn_one_batch(x, y, events, subjects, training=False)
-                    spike_idx = trainer.spike_idxes[trainer.iter]  # [B, L, 1]
-                    x, y_sas = trainer.snn_one_batch(x, y, events, subjects, slice=True)
-                    texts = process_sentences_with_spikes(texts, spike_idx, trainer.n_frames)
+        with torch.no_grad():
+            trainer.iter += 1
+            if args.ckpt_snn is not None:
+                _ = trainer.snn_one_batch(x, y, events, subjects, training=False)
+                spike_idx = trainer.spike_idxes[trainer.iter]  # [B, L, 1]
+                x, y_sas = trainer.snn_one_batch(x, y, events, subjects, slice=True)
+                texts = process_sentences_with_spikes(texts, spike_idx, trainer.n_frames)
 
-                pred = trainer.ann(x.to(trainer.device), subjects.to(trainer.device)).detach().cpu()
+            pred = trainer.ann(x.to(trainer.device), subjects.to(trainer.device)).detach().cpu()
 
-                flat_text = [item for t in texts for item in t]
-                flat_text = [t.replace('\n', '').replace('\r', '') for t in flat_text]
-                flat_text = [t if t != '' else ' ' for t in flat_text]
+            flat_text = [item for t in texts for item in t]
+            flat_text = [t.replace('\n', '').replace('\r', '') for t in flat_text]
+            flat_text = [t if t != '' else ' ' for t in flat_text]
 
-                B, L = subjects.shape
-                for b in range(B):
-                    for l in range(L):
-                        subj_id = subjects[b, l].item()
-                        if subj_id == subjects_num:
-                            stop_loop = True
-                            break  # break inner loop
+            B, L = subjects.shape
+            for b in range(B):
+                for l in range(L):
+                    subj_id = subjects[b, l].item()
+                    if subj_id == subjects_num:
+                        stop_loop = True
+                        break  # break inner loop
 
-                        idx = b * L + l
-                        t = flat_text[idx]
+                    idx = b * L + l
+                    t = flat_text[idx]
 
-                        wordf = torch.tensor([zipf(w, 'en') for w in t.split(' ')]).view(1, 1, -1)
-                        wordf = F.interpolate(wordf, size=y.shape[-2], mode='linear', align_corners=False).view(-1)
+                    wordf = torch.tensor([zipf(w, 'en') for w in t.split(' ')]).view(1, 1, -1)
+                    wordf = F.interpolate(wordf, size=y.shape[-2], mode='linear', align_corners=False).view(-1)
 
-                        word_emb = torch.stack([torch.tensor(we.vector) for we in word_encoder(t)]).flatten().view(1, 1, -1)
-                        word_emb = F.interpolate(word_emb, size=y.shape[-2], mode='linear', align_corners=False).view(-1)
+                    word_emb = torch.stack([torch.tensor(we.vector) for we in word_encoder(t)]).flatten().view(1, 1, -1)
+                    word_emb = F.interpolate(word_emb, size=y.shape[-2], mode='linear', align_corners=False).view(-1)
 
-                        tokenized_sentence = sentence_tokenizer.tokenize(t)
-                        sentence_emb = torch.tensor(sentence_encoder.encode_sentences([tokenized_sentence], normalize_embeddings=True)).view(1, 1, -1)
-                        sentence_emb = F.interpolate(sentence_emb, size=y.shape[-2], mode='linear', align_corners=False).view(-1)
+                    tokenized_sentence = sentence_tokenizer.tokenize(t)
+                    sentence_emb = torch.tensor(sentence_encoder.encode_sentences([tokenized_sentence], normalize_embeddings=True)).view(1, 1, -1)
+                    sentence_emb = F.interpolate(sentence_emb, size=y.shape[-2], mode='linear', align_corners=False).view(-1)
 
-                        subject_preds[subj_id].append(pred[idx])
-                        subject_wordfs[subj_id].append(wordf)
-                        subject_word_embs[subj_id].append(word_emb)
-                        subject_sentence_embs[subj_id].append(sentence_emb)
-                    if stop_loop:
-                        break  # break outer loop within batch
+                    subject_preds[subj_id].append(pred[idx])
+                    subject_wordfs[subj_id].append(wordf)
+                    subject_word_embs[subj_id].append(word_emb)
+                    subject_sentence_embs[subj_id].append(sentence_emb)
+                if stop_loop:
+                    break  # break outer loop within batch
 
-        # Final stacking: [10, N_i, D]
-        preds = torch.stack([torch.stack(subject_preds[sid]) for sid in range(subjects_num)])  # [10, N, ...]
-        wordfs = torch.stack([torch.stack(subject_wordfs[sid]) for sid in range(subjects_num)])  # [10, N, ...]
-        word_embs = torch.stack([torch.stack(subject_word_embs[sid]) for sid in range(subjects_num)])  # [10, N, ...]
-        sentence_embs = torch.stack([torch.stack(subject_sentence_embs[sid]) for sid in range(subjects_num)])  # [10, N, ...]
-        assert preds.shape[0] == wordfs.shape[0]
-        cache_dir = rf"{args.base_dir}\cache"
-        torch.save(preds, rf"{cache_dir}\preds.pth")
-        torch.save(wordfs, rf"{cache_dir}\wordfs.pth")
-        torch.save(word_embs, rf"{cache_dir}\word_embs.pth")
-        torch.save(sentence_embs, rf"{cache_dir}\sentence_embs.pth")
+    # Final stacking: [10, N_i, D]
+    preds = torch.stack([torch.stack(subject_preds[sid]) for sid in range(subjects_num)])  # [10, N, ...]
+    wordfs = torch.stack([torch.stack(subject_wordfs[sid]) for sid in range(subjects_num)])  # [10, N, ...]
+    word_embs = torch.stack([torch.stack(subject_word_embs[sid]) for sid in range(subjects_num)])  # [10, N, ...]
+    sentence_embs = torch.stack([torch.stack(subject_sentence_embs[sid]) for sid in range(subjects_num)])  # [10, N, ...]
+    assert preds.shape[0] == wordfs.shape[0]
+    cache_dir = rf"{args.base_dir}\cache"
+    # torch.save(preds, rf"{cache_dir}\preds.pth")
+    # torch.save(wordfs, rf"{cache_dir}\wordfs.pth")
+    # torch.save(word_embs, rf"{cache_dir}\word_embs.pth")
+    # torch.save(sentence_embs, rf"{cache_dir}\sentence_embs.pth")
 
     # n = preds.shape[0]
     # half_n = n // 4
@@ -271,11 +271,18 @@ if __name__ == '__main__':
     # RidgeRegression
     scores = torch.zeros([preds.shape[0], 768, 3])
     stds = torch.zeros([preds.shape[0], 768, 3])
-    for i in range(5):
+    for i in range(preds.shape[0]):
+        if i == 0: continue
         for j in tqdm(range(768)):
-            scores[i, j, 0], stds[i, j, 0] = evaluate_model(RidgeRegression, preds[i, :, j], wordfs[i, :, j], epochs=1500)
-            scores[i, j, 1], stds[i, j, 1] = evaluate_model(RidgeRegression, preds[i, :, j], word_embs[i, :, j], epochs=1000)
-            scores[i, j, 2], stds[i, j, 2] = evaluate_model(RidgeRegression, preds[i, :, j], sentence_embs[i, :, j], epochs=700)
+            # scores[i, j, 0], stds[i, j, 0] = evaluate_model(RidgeRegression, preds[i, :, j], wordfs[i, :, j], epochs=1500)
+            # scores[i, j, 1], stds[i, j, 1] = evaluate_model(RidgeRegression, preds[i, :, j], word_embs[i, :, j], epochs=1000)
+            # scores[i, j, 2], stds[i, j, 2] = evaluate_model(RidgeRegression, preds[i, :, j], sentence_embs[i, :, j], epochs=700)
+            score = cross_val_score(ridge_model, preds[i, :, j], wordfs[i, :, j], scoring=scoring, cv=cv)
+            scores[i, j, 0], stds[i, j, 0] = np.nanmean(score), np.nanstd(score)
+            score = cross_val_score(ridge_model, preds[i, :, j], word_embs[i, :, j], scoring=scoring, cv=cv)
+            scores[i, j, 1], stds[i, j, 1] = np.nanmean(score), np.nanstd(score)
+            score = cross_val_score(ridge_model, preds[i, :, j], sentence_embs[i, :, j], scoring=scoring, cv=cv)
+            scores[i, j, 2], stds[i, j, 2] = np.nanmean(score), np.nanstd(score)
         print(torch.nanmean(scores[i], dim=0), torch.nanmean(stds[i], dim=0))
     torch.save(scores, rf"{args.base_dir}\cache\scores.pth")
     torch.save(stds, rf"{args.base_dir}\cache\stds.pth")

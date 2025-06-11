@@ -1,9 +1,13 @@
 import argparse
+import pdb
 import random
 import numpy as np
 import torch
 import os
 import glob
+from collections import defaultdict
+from tqdm import tqdm
+from sklearn.metrics import balanced_accuracy_score
 
 from models.snn import SAS
 from models.utils import *
@@ -27,7 +31,7 @@ if __name__ == '__main__':
     parser.add_argument('--num_workers', type=int, default=0)
     parser.add_argument('--label_smoothing', type=float, default=0.1)
 
-    parser.add_argument('--datasets', type=str, default='brennan2019')  # brennan2019  broderick2019  ISRUC
+    parser.add_argument('--datasets', type=str, default='broderick2019')  # brennan2019  broderick2019  ISRUC
     parser.add_argument('--model', type=str, default='cbramod')  # simplecnn  cbramod  labram
     parser.add_argument('--n_negatives', type=int, default=None)
     parser.add_argument('--n_subjects', type=int, default=None)
@@ -46,11 +50,6 @@ if __name__ == '__main__':
     parser.add_argument('--frozen_snn', action='store_true', default=False)
     parser.add_argument('--frozen_lbm', action='store_true', default=False)
     args = parser.parse_args()
-
-    # clear cache
-    # for file_path in glob.glob(os.path.join(rf"{args.base_dir}\cache", "*")):
-    #     if os.path.isfile(file_path):
-    #         os.remove(file_path)
 
     # setup seed
     torch.manual_seed(args.seed)
@@ -72,8 +71,12 @@ if __name__ == '__main__':
         eeg_model = model_isruc.Model(args)
         snn_model = SAS(args)
         trainer = trainer_isruc
+        ckpts = [
+            r'cbramod\ann_epoch2_acc_0.78914_kappa_0.74099_f1_0.79926.pth',
+            r'cbramod\ann_acc_0.78219_kappa_0.74172_f1_0.79994.pth',
+            (r'cbramod+sas-brain\ann_best_acc_0.79315_kappa_0.75438_f1_0.81432.pth', r'cbramod+sas-brain\snn_best_spike_0.01052.pth')
+        ]
     elif args.datasets == 'broderick2019':
-        # args.n_negatives = 50
         args.n_subjects = 19
         args.n_channels = 128
         args.n_slice = 1
@@ -84,8 +87,15 @@ if __name__ == '__main__':
         eeg_model = model_broderick2019.Model(args)
         snn_model = SAS(args)
         trainer = trainer_broderick2019
+        ckpts = [
+            r'cbramod\ann_epoch23_10@50_0.77831_10@All_0.22712.pth',
+            r'cbramod\ann_epoch50_10@50_0.75661_10@All_0.21322.pth',
+            r'cbramod\ann_epoch61_10@50_0.75797_10@All_0.22542.pth',
+            r'cbramod\ann_epoch38_10@50_0.75831_10@All_0.20678.pth',
+            r'cbramod\ann_epoch38_10@50_0.72305_10@All_0.18339.pth',
+            (r'cbramod+sas-brain\ann_epoch0_10@50_0.81898_10@All_0.23356.pth', r'cbramod+sas-brain\snn_epoch0_spike_0.11116.pth')
+        ]
     elif args.datasets == 'brennan2019':
-        args.n_negatives = 200
         args.n_subjects = 32
         args.n_channels = 60
         args.n_slice = 1
@@ -96,45 +106,53 @@ if __name__ == '__main__':
         eeg_model = model_brennan2019.Model(args)
         snn_model = SAS(args)
         trainer = trainer_brennan2019
+        ckpts = [
+            r'cbramod\ann_epoch49_10@50_0.81750_10@All_0.16100.pth',
+            r'cbramod\ann_epoch0_10@50_0.85000_10@All_0.17100.pth',
+            r'cbramod\ann_epoch46_10@50_0.81450_10@All_0.15050.pth',
+            r'cbramod\ann_epoch49_10@50_0.76700_10@All_0.11600.pth',
+            r'cbramod\ann_epoch96_10@50_0.86200_10@All_0.22850.pth',
+            (r'cbramod+sas-brain\ann_epoch93_10@50_0.90300_10@All_0.29850.pth', r'cbramod+sas-brain\snn_epoch93_spike_0.01630.pth')
+        ]
 
-    # optimizer and scheduler
-    backbone_params = []
-    other_params = []
-    for name, param in eeg_model.named_parameters():
-        if "backbone" in name:
-            backbone_params.append(param)
+    for i, ckpt in enumerate(ckpts):
+        if len(ckpt) == 2:
+            args.ckpt_ann = rf"{args.base_dir}\ckpt\{args.datasets}\{ckpt[0]}"
+            args.ckpt_snn = rf"{args.base_dir}\ckpt\{args.datasets}\{ckpt[1]}"
         else:
-            other_params.append(param)
+            args.ckpt_ann = rf"{args.base_dir}\ckpt\{args.datasets}\{ckpt}"
 
-    for frozen, params in [
-        (args.frozen_ann, eeg_model.parameters()),
-        (args.frozen_snn, snn_model.parameters()),
-        (args.frozen_lbm, backbone_params),
-    ]:
-        if frozen:
-            for p in params: p.requires_grad = False
+        trainer_i = trainer.Trainer(data_loaders, eeg_model, snn_model, None, None, args)
+        trainer_i.ann.eval()
 
-    if args.multi_lr:
-        optimizer = torch.optim.AdamW([
-            {'params': other_params, 'lr': args.lr, 'name': 'ann'},
-            {'params': snn_model.parameters(), 'lr': args.lr, 'name': 'snn'},
-            {'params': backbone_params, 'lr': args.lr / 5, 'name': 'lbm'}
-        ], betas=(0.9, 0.999), weight_decay=args.weight_decay)
-    else:
-        optimizer = torch.optim.AdamW([
-            {'params': eeg_model.parameters(), 'lr': args.lr, 'name': 'ann'},
-            {'params': snn_model.parameters(), 'lr': args.lr, 'name': 'snn'},
-        ], betas=(0.9, 0.999), weight_decay=args.weight_decay)
+        subject_metric = defaultdict(list)
+        subject_metric_1 = defaultdict(list)
+        for x, y, events, subjects in tqdm(data_loaders['test']):
+            trainer_i.iter += 1
 
-    scheduler_ann = GroupCosineAnnealingLR(optimizer, group_index=0, T_max=args.max_epoch * len(data_loaders['train']), eta_min=1e-6, verbose=False, name='ann')
-    scheduler_snn = GroupCosineAnnealingLR(optimizer, group_index=1, T_max=args.max_epoch * len(data_loaders['train']), eta_min=1e-6, verbose=False, name='snn')
-    schedulers = [scheduler_ann, scheduler_snn]
+            if args.datasets in ['broderick2019', 'brennan2019']:
+                if args.ckpt_snn is not None:
+                    _ = trainer_i.snn_one_batch(x, y, events, subjects, training=False)
+                correct_all, correct_50 = trainer_i.ann_one_batch(x, y, events, subjects, training=False)
+                metrics = correct_50
+            elif args.datasets == 'ISRUC':
+                if args.ckpt_snn is not None:
+                    _ = trainer_i.snn_one_batch(x, y, events, training=False)
+                truth, pred = trainer_i.ann_one_batch(x, y, events, training=False)
+                metrics = torch.tensor([truth, pred]).t()
 
-    print(f"The ann contains {sum(p.numel() for p in other_params)} parameters.")
-    print(f"The snn contains {sum(p.numel() for p in snn_model.parameters())} parameters.")
-    print(f"The backbone contains {sum(p.numel() for p in backbone_params)} parameters.")
-    
-    # train
-    trainer = trainer.Trainer(data_loaders, eeg_model, snn_model, optimizer, schedulers, args)
-    trainer.train()
+            subjects = subjects.flatten()
+            for s, metric in zip(subjects, metrics):
+                subject_metric[s.item()].append(metric)
+
+        try:
+            for subj in subject_metric:
+                m = torch.stack(subject_metric[subj])
+                truth, pred = m[:, 0], m[:, 1]
+                subject_metric[subj] = balanced_accuracy_score(truth, pred)
+            subject_metric = [subject_metric[subj] for subj in subject_metric]
+        except:
+            subject_metric = [sum(subject_metric[subj]) / len(subject_metric[subj]) for subj in subject_metric]
+
+        print(subject_metric)
 

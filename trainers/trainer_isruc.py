@@ -54,10 +54,8 @@ class Trainer(object):
 
     def ann_one_batch(self, x, y, events, training):
         with torch.no_grad():
-            x_sas = self.snn_one_batch(x, events, slice=True)
+            x_sas, y = self.snn_one_batch(x, y, events, slice=True)
         pred = self.ann(x_sas.to(self.device))
-        if y.shape[1] != x_sas.shape[1]:
-            y = F.interpolate(y.unsqueeze(1).float(), size=x_sas.shape[1], mode='nearest').squeeze(1).to(torch.int64)
 
         if training:
             loss = self.criterion_ann(pred.transpose(1, 2), y)
@@ -86,7 +84,7 @@ class Trainer(object):
             pred = [item for sublist in pred for item in sublist] if isinstance(pred[0], (list, tuple)) else pred
             return truth, pred
 
-    def snn_one_batch(self, x, events, training=False, slice=False):
+    def snn_one_batch(self, x, y, events, training=False, slice=False):
         # x: [B, 20, 6, 6000]
         # expect_idxes: [B, L]
         B, L, C, T = x.shape
@@ -105,8 +103,10 @@ class Trainer(object):
                 x_sas.append(torch.stack(
                     [self.resample(x[b, :, spike_time[i]:spike_time[i + 1]], sample_num=T) for i in range(len(spike_time) - 1)]
                 ))
-            x_sas = torch.stack(x_sas).float().to(self.device)
-            return x_sas  # [B, l, C, T]
+            x_sas = torch.stack(x_sas).float().to(self.device)  # [B, l, C, T]
+            if y.shape[1] != x_sas.shape[1]:
+                y = F.interpolate(y.unsqueeze(1).float(), size=x_sas.shape[1], mode='nearest').squeeze(1).to(torch.int64)
+            return x_sas, y
 
         events = rearrange(events, 'B L t P C -> (B L) t P C', B=B, L=L)
         spike_idxes = self.snn(events.to(self.device))
@@ -159,14 +159,14 @@ class Trainer(object):
             self.snn.train()
             spike_losses = []
             losses = []
-            for x, y, events in tqdm(self.data_loaders[mode]):
+            for x, y, events, subjects in tqdm(self.data_loaders[mode]):
                 self.iter += 1
                 y = y.to(self.device)
 
                 if self.args.frozen_snn:
                     spike_losses.append(0)
                 else:
-                    spike_loss = self.snn_one_batch(x, events, training=True)
+                    spike_loss = self.snn_one_batch(x, y, events, training=True)
                     spike_losses.append(spike_loss)
 
                 if self.args.frozen_ann:
@@ -180,11 +180,11 @@ class Trainer(object):
             self.ann.eval()
             truths = []
             preds = []
-            for x, y, events in tqdm(self.data_loaders[mode]):
+            for x, y, events, subjects in tqdm(self.data_loaders[mode]):
                 self.iter += 1
                 y = y.to(self.device)
 
-                spike_loss = self.snn_one_batch(x, events, training=False)
+                spike_loss = self.snn_one_batch(x, y, events, training=False)
                 truth, pred = self.ann_one_batch(x, y, events, training=False)
                 truths += truth
                 preds += pred
@@ -268,7 +268,7 @@ class Trainer(object):
         print("snn model save in " + self.save_dir_snn)
 
     def MCMC_init(self, mode):
-        for x, y, events in self.data_loaders['train']:
+        for x, y, events, subjects in self.data_loaders['train']:
             B, L, C, T = x.shape  # B, 20, 6, 6000
             break
         duration = T / self.args.sr  # 30 seconds
