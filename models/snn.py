@@ -68,14 +68,14 @@ class SNN(nn.Module):
             layer.Conv1d(32, 64, kernel_size=3, padding=1, step_mode='m'),
             layer.SeqToANNContainer(nn.GroupNorm(64, 64)),
             neuron.IFNode(step_mode='m'),
-            layer.AdaptiveAvgPool1d(encoder_out, step_mode='m')
+            layer.AdaptiveAvgPool1d(encoder_out, step_mode='m'),
+            layer.Flatten(step_mode='m'),
         )
 
+        self.rnn = nn.GRU(input_size=flatten_size, hidden_size=flatten_size // 2,
+                          bidirectional=True, batch_first=False)
+
         self.linear = nn.Sequential(
-            layer.Flatten(step_mode='m'),
-            # layer.Linear(flatten_size, 512, bias=False, step_mode='m'),
-            # layer.SeqToANNContainer(nn.LayerNorm(512)),
-            # neuron.IFNode(step_mode='m'),
             layer.Linear(flatten_size, 1, bias=False, step_mode='m')
         )
         self.node = IFNode()
@@ -83,6 +83,7 @@ class SNN(nn.Module):
     def forward(self, x, subjects):
         x = self.subject_layer.forward(x, subjects)
         feature_map = self.encoder(x)
+        feature_map, _ = self.rnn(feature_map)
         I = self.linear(feature_map)
         if self.node.step_mode == 'm':
             self.I = I

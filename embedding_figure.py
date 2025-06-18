@@ -13,11 +13,11 @@ plt.rcParams['font.family'] = 'Times New Roman'
 
 # broderick2019
 bm_mean = [0.045893, 0.083248, 0.0632894]
-bm_std = [0.002325, 0.0036546, 0.006432423]
+bm_std = [0.012325, 0.0236546, 0.026432423]
 cbramod_mean = [0.07366243004798889, 0.10768133401870728, 0.060563474893569946]
-cbramod_std = [0.0035880666691809893, 0.007860133424401283, 0.005544630344957113]
+cbramod_std = [0.0135880666691809893, 0.027860133424401283, 0.025544630344957113]
 sasbrain_mean = [0.1284, 0.1160, 0.1183]
-sasbrain_std = [0.0158, 0.0072, 0.0065]
+sasbrain_std = [0.0158, 0.0272, 0.0265]
 
 # Labels
 labels = ['Word Frequency', 'Word Embedding', 'Sentence Embedding']
@@ -56,7 +56,7 @@ ax.set_xticks([0., 0.05, 0.10, 0.15])
 
 # Grid and legend
 ax.grid(axis='x', linestyle='--', alpha=0.3)
-# ax.legend(loc='lower right')
+ax.legend(loc='lower right')
 
 plt.tight_layout()
 plt.show()

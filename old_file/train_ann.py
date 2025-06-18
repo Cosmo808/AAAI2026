@@ -153,14 +153,12 @@ class Trainer:
         return epoch_loss, top_k_acc
 
     def batch_forward(self, eeg_seg, speech_rep, subject_id, training):
-        last_dim = eeg_seg.shape[-1] // 200 * 200 + 200
-        eeg_seg = F.interpolate(eeg_seg, last_dim)
-        speech_rep = F.interpolate(speech_rep, last_dim)
-        eeg_seg = eeg_seg.unsqueeze(dim=1)
-        subject_id = subject_id.unsqueeze(dim=1)
-        # speech_rep = speech_rep.unsqueeze(dim=1)
+        # last_dim = eeg_seg.shape[-1] // 200 * 200 + 200
+        # eeg_seg = F.interpolate(eeg_seg, last_dim)
+        # speech_rep = F.interpolate(speech_rep, last_dim)
+        # eeg_seg = eeg_seg.unsqueeze(dim=1)
+        # subject_id = subject_id.unsqueeze(dim=1)
 
-        # eeg_rep = self.model(eeg_seg, subject_id.to(self.device))
         eeg_rep = self.model(eeg_seg, subject_id.to(self.device))
 
         if training:
@@ -298,7 +296,7 @@ class Trainer:
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument('--datasets', type=str, default='brennan2019')  # brennan2019  broderick2019
+    parser.add_argument('--datasets', type=str, default='broderick2019')  # brennan2019  broderick2019
     parser.add_argument('--model', type=str, default='cbramod')  # simplecnn  cbramod  labram
     parser.add_argument('--lr', type=float, default=3e-4)
     parser.add_argument('--max_epoch', type=int, default=300)
@@ -346,8 +344,8 @@ if __name__ == "__main__":
         test_num += eeg_seg.shape[0]
     print(f"Sample numbers {train_num}/{test_num} (train/test)")
 
-    # eeg_model = SimpleConv(in_channels, out_channels, num_layers, feature_dim, n_subjects)
-    eeg_model = model_brennan2019.Model(args)
+    eeg_model = SimpleConv(in_channels, out_channels, num_layers, feature_dim, n_subjects)
+    # eeg_model = model_brennan2019.Model(args)
 
     # eeg_model = BrainMagic(in_channels=in_channels, conv_channels=conv_channels, out_channels=feature_dim,
     #                        n_subjects=n_subjects, num_convblock=num_convblock)

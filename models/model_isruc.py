@@ -18,7 +18,7 @@ class Model(nn.Module):
             )
             if args.load_lbm:
                 map_location = torch.device(f'cuda:0')
-                self.backbone.load_state_dict(torch.load(args.foundation_dir, map_location=map_location))
+                self.backbone.load_state_dict(torch.load(args.foundation_dir, map_location=map_location, weights_only=False))
             self.backbone.proj_out = nn.Identity()
 
         self.head = nn.Sequential(

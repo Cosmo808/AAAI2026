@@ -1,16 +1,12 @@
 import argparse
 import random
-import numpy as np
-import torch
-import os
-import glob
 
 from models.snn import SAS
 from models.utils import *
 
-from data_loader import data_isruc, data_broderick2019, data_brennan2019
-from models import model_isruc, model_broderick2019, model_brennan2019
-from trainers import trainer_isruc, trainer_broderick2019, trainer_brennan2019
+from data_loader import data_isruc, data_broderick2019, data_brennan2019, data_mumtaz2016, data_mental
+from models import model_isruc, model_broderick2019, model_brennan2019, model_mumtaz2016, model_mental
+from trainers import trainer_isruc, trainer_broderick2019, trainer_brennan2019, trainer_mumtaz2016, trainer_mental
 
 
 if __name__ == '__main__':
@@ -27,7 +23,7 @@ if __name__ == '__main__':
     parser.add_argument('--num_workers', type=int, default=0)
     parser.add_argument('--label_smoothing', type=float, default=0.1)
 
-    parser.add_argument('--datasets', type=str, default='brennan2019')  # brennan2019  broderick2019  ISRUC
+    parser.add_argument('--datasets', type=str, default='Mumtaz2016')  # brennan2019  broderick2019  ISRUC  Mumtaz2016  MentalArithmetic
     parser.add_argument('--model', type=str, default='cbramod')  # simplecnn  cbramod  labram
     parser.add_argument('--n_negatives', type=int, default=None)
     parser.add_argument('--n_subjects', type=int, default=None)
@@ -45,7 +41,14 @@ if __name__ == '__main__':
     parser.add_argument('--frozen_ann', action='store_true', default=False)
     parser.add_argument('--frozen_snn', action='store_true', default=False)
     parser.add_argument('--frozen_lbm', action='store_true', default=False)
+    parser.add_argument('--eval', action='store_true', default=False)
     args = parser.parse_args()
+
+    # check if evaluate
+    if args.eval:
+        args.frozen_ann = True
+        args.frozen_snn = True
+        args.max_epoch = 1
 
     # clear cache
     # for file_path in glob.glob(os.path.join(rf"{args.base_dir}\cache", "*")):
@@ -72,8 +75,32 @@ if __name__ == '__main__':
         eeg_model = model_isruc.Model(args)
         snn_model = SAS(args)
         trainer = trainer_isruc
+    elif args.datasets == 'Mumtaz2016':
+        args.n_classes = 2
+        args.n_subjects = 64
+        args.n_channels = 19
+        args.n_slice = 1
+        args.sr = 200
+        args.fps = 10
+        data_loaders = data_mumtaz2016.LoadDataset(args)
+        data_loaders = data_loaders.get_data_loader()
+        eeg_model = model_mumtaz2016.Model(args)
+        snn_model = SAS(args)
+        trainer = trainer_mumtaz2016
+    elif args.datasets == 'MentalArithmetic':
+        args.n_classes = 2
+        args.n_subjects = 36
+        args.n_channels = 20
+        args.n_slice = 1
+        args.sr = 200
+        args.fps = 10
+        data_loaders = data_mental.LoadDataset(args)
+        data_loaders = data_loaders.get_data_loader()
+        eeg_model = model_mental.Model(args)
+        snn_model = SAS(args)
+        trainer = trainer_mental
     elif args.datasets == 'broderick2019':
-        # args.n_negatives = 50
+        args.n_negatives = 100
         args.n_subjects = 19
         args.n_channels = 128
         args.n_slice = 1

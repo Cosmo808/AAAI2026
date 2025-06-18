@@ -34,8 +34,8 @@ class SimpleConv(nn.Module):
 
         self.final = nn.Sequential(
             nn.Conv1d(in_channels if num_layers == 0 else out_channels, 2 * out_channels, kernel_size=1, stride=1),
-            # nn.BatchNorm1d(2 * out_channels),
-            nn.GroupNorm(num_groups=16, num_channels=2 * out_channels),
+            nn.BatchNorm1d(2 * out_channels),
+            # nn.GroupNorm(num_groups=16, num_channels=2 * out_channels),
             nn.Dropout(dropout_ratio),
             nn.GELU(),
             nn.ConvTranspose1d(2 * out_channels, feature_dim, kernel_size=1, stride=1),

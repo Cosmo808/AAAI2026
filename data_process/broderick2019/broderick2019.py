@@ -354,7 +354,7 @@ if __name__ == "__main__":
     parser.add_argument('--length', type=float, default=None)
     args = parser.parse_args()
 
-    path = r"../../datasets/broderick2019"
+    path = r"E:\NIPS2026\datasets\broderick2019"
     split_method = ('5fold', 0)
     # args.length = 5
 
