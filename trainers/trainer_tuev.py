@@ -116,7 +116,7 @@ class Trainer(object):
         for b in range(B * L):
             spike_idx = spike_idxes[b]
             expect_idx = expect_idxes[b]
-            expect_idxes = expect_idxes[expect_idxes != -1]
+            expect_idx = expect_idx[expect_idx != -1]
 
             no_spike = True if spike_idx.numel() == 0 else False
             expect_idx = expect_idx.unsqueeze(0) if expect_idx.ndim == 0 else expect_idx
@@ -134,7 +134,7 @@ class Trainer(object):
 
             if no_spike:
                 spike_idx = torch.full((self.expect_spike_idxes.shape[-1],), - 1, dtype=spike_idx.dtype)
-                spike_idx[0] = torch.sort(torch.randperm(self.n_frames)[0])[0]
+                spike_idx[0] = torch.sort(torch.randperm(self.n_frames)[0])[0] if training else self.n_frames - 1
             self.spike_idxes[self.iter, b // L, b % L] = spike_idx.cpu()
 
         spike_loss = sum(spike_loss) / len(spike_loss)
@@ -208,7 +208,7 @@ class Trainer(object):
             optim_state = self.optimizer.state_dict()
 
             with torch.no_grad():
-                acc, kappa, f1, cm, spike_loss = self.run_one_epoch(mode='val')
+                acc, kappa, f1, cm, spike_loss = self.run_one_epoch(mode='test')
 
                 print(
                     "Epoch {}/{} | training loss: {:.2f}/{:.5f}, acc: {:.5f}, kappa: {:.5f}, f1: {:.5f}, LR: {:.2e}, elapsed {:.1f} mins".format(
@@ -236,7 +236,7 @@ class Trainer(object):
         self.snn.load_state_dict(self.best_state_snn)
         with torch.no_grad():
             print("***************************Test results************************")
-            acc, kappa, f1, cm, spike_loss = self.run_one_epoch(mode='test')
+            acc, kappa, f1, cm, spike_loss = self.run_one_epoch(mode='val')
             print(
                 "Test Evaluation: acc: {:.5f}, kappa: {:.5f}, f1: {:.5f}, spike_loss{:.5f}".format(
                     acc, kappa, f1, spike_loss)

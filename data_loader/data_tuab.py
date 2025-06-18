@@ -74,14 +74,14 @@ class LoadDataset(object):
             ),
             'val': DataLoader(
                 val_set,
-                batch_size=10,
+                batch_size=self.args.bs,
                 collate_fn=val_set.collate,
                 shuffle=False,
                 drop_last=True,
             ),
             'test': DataLoader(
                 test_set,
-                batch_size=10,
+                batch_size=self.args.bs,
                 collate_fn=test_set.collate,
                 shuffle=False,
                 drop_last=True,

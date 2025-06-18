@@ -116,7 +116,7 @@ class Trainer(object):
         for b in range(B * L):
             spike_idx = spike_idxes[b]
             expect_idx = expect_idxes[b]
-            expect_idxes = expect_idxes[expect_idxes != -1]
+            expect_idx = expect_idx[expect_idx != -1]
 
             no_spike = True if spike_idx.numel() == 0 else False
             expect_idx = expect_idx.unsqueeze(0) if expect_idx.ndim == 0 else expect_idx
