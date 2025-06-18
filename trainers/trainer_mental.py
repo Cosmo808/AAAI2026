@@ -84,8 +84,6 @@ class Trainer(object):
             return truth, pred, score
 
     def snn_one_batch(self, x, y, events, training=False, slice=False):
-        # x: [B, 20, 6, 6000]
-        # expect_idxes: [B, L]
         B, L, C, T = x.shape
 
         if slice:
@@ -220,7 +218,7 @@ class Trainer(object):
                 )
                 # print(cm)
                 if acc > acc_best:
-                    print("kappa or spike_loss increasing....saving weights !! ")
+                    print("val metric increasing....saving weights !! ")
                     print(
                         "Val Evaluation: acc: {:.5f}, pr_auc: {:.5f}, roc_auc: {:.5f}, spike_loss: {:.3f}".format(
                             acc, pr_auc, roc_auc, spike_loss)
@@ -272,8 +270,9 @@ class Trainer(object):
 
     def MCMC_init(self, mode):
         for x, y, events, subjects in self.data_loaders['train']:
-            B, L, C, T = x.shape  # B, 5, 19, 600
+            B, L, C, T = x.shape  # B, 5, 20, 600
             break
+        pdb.set_trace()
         duration = T / self.args.sr  # 3 seconds
         self.n_frames = int(duration * self.args.fps)  # 30 frames
         # expect_spike_idxes = torch.ones(size=[len(self.data_loaders['train']), self.args.bs, L]) * (self.n_frames - 1)

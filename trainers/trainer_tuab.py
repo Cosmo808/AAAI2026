@@ -84,6 +84,8 @@ class Trainer(object):
             return truth, pred, score
 
     def snn_one_batch(self, x, y, events, training=False, slice=False):
+        # x: [B, 20, 6, 6000]
+        # expect_idxes: [B, L]
         B, L, C, T = x.shape
 
         if slice:
@@ -270,10 +272,10 @@ class Trainer(object):
 
     def MCMC_init(self, mode):
         for x, y, events, subjects in self.data_loaders['train']:
-            B, L, C, T = x.shape  # B, 5, 19, 600
+            B, L, C, T = x.shape  # B, 5, 16, 2000
             break
-        duration = T / self.args.sr  # 3 seconds
-        self.n_frames = int(duration * self.args.fps)  # 30 frames
+        duration = T / self.args.sr  # 10 seconds
+        self.n_frames = int(duration * self.args.fps)  # 20 frames
         # expect_spike_idxes = torch.ones(size=[len(self.data_loaders['train']), self.args.bs, L]) * (self.n_frames - 1)
         self.expect_spike_idxes = torch.stack([
             torch.sort(torch.randperm(self.n_frames)[:self.args.n_slice])[0]

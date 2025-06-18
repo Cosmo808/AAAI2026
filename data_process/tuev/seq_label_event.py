@@ -10,7 +10,7 @@ class Param:
     pass
 param = Param()
 param.C = 0.2
-param.fps = 2
+param.fps = 4
 param.sr = 200
 b2e = Brain2Event(param)
 seq_length = 5

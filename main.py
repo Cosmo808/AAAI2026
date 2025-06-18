@@ -4,9 +4,9 @@ import random
 from models.snn import SAS
 from models.utils import *
 
-from data_loader import data_isruc, data_broderick2019, data_brennan2019, data_mumtaz2016, data_mental
-from models import model_isruc, model_broderick2019, model_brennan2019, model_mumtaz2016, model_mental
-from trainers import trainer_isruc, trainer_broderick2019, trainer_brennan2019, trainer_mumtaz2016, trainer_mental
+from data_loader import data_isruc, data_broderick2019, data_brennan2019, data_mumtaz2016, data_mental, data_tuab, data_tuev
+from models import model_isruc, model_broderick2019, model_brennan2019, model_mumtaz2016, model_mental, model_tuab, model_tuev
+from trainers import trainer_isruc, trainer_broderick2019, trainer_brennan2019, trainer_mumtaz2016, trainer_mental, trainer_tuab, trainer_tuev
 
 
 if __name__ == '__main__':
@@ -23,8 +23,11 @@ if __name__ == '__main__':
     parser.add_argument('--num_workers', type=int, default=0)
     parser.add_argument('--label_smoothing', type=float, default=0.1)
 
-    parser.add_argument('--datasets', type=str, default='Mumtaz2016')  # brennan2019  broderick2019  ISRUC  Mumtaz2016  MentalArithmetic
-    parser.add_argument('--model', type=str, default='cbramod')  # simplecnn  cbramod  labram
+    parser.add_argument('--datasets', type=str, default='TUEV',
+                        choices=['brennan2019', 'broderick2019',
+                                 'ISRUC', 'TUEV',
+                                 'Mumtaz2016', 'MentalArithmetic', 'TUAB'])
+    parser.add_argument('--model', type=str, default='cbramod', choices=['simplecnn', 'cbramod', 'labram'])
     parser.add_argument('--n_negatives', type=int, default=None)
     parser.add_argument('--n_subjects', type=int, default=None)
     parser.add_argument('--n_channels', type=int, default=None)
@@ -99,6 +102,30 @@ if __name__ == '__main__':
         eeg_model = model_mental.Model(args)
         snn_model = SAS(args)
         trainer = trainer_mental
+    elif args.datasets == 'TUAB':
+        args.n_classes = 2
+        args.n_subjects = 1
+        args.n_channels = 16
+        args.n_slice = 1
+        args.sr = 200
+        args.fps = 2
+        data_loaders = data_tuab.LoadDataset(args)
+        data_loaders = data_loaders.get_data_loader()
+        eeg_model = model_tuab.Model(args)
+        snn_model = SAS(args)
+        trainer = trainer_tuab
+    elif args.datasets == 'TUEV':
+        args.n_classes = 6
+        args.n_subjects = 1
+        args.n_channels = 16
+        args.n_slice = 1
+        args.sr = 200
+        args.fps = 4
+        data_loaders = data_tuev.LoadDataset(args)
+        data_loaders = data_loaders.get_data_loader()
+        eeg_model = model_tuev.Model(args)
+        snn_model = SAS(args)
+        trainer = trainer_tuev
     elif args.datasets == 'broderick2019':
         args.n_negatives = 100
         args.n_subjects = 19

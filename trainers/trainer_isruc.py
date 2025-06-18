@@ -105,8 +105,8 @@ class Trainer(object):
                 ))
             x_sas = torch.stack(x_sas).float().to(self.device)  # [B, l, C, T]
             if y.shape[1] != x_sas.shape[1]:
-                y = F.interpolate(y.unsqueeze(1).float(), size=x_sas.shape[1], mode='nearest').squeeze(1).to(torch.int64)
-            return x_sas, y
+                y = F.interpolate(y.unsqueeze(1).float(), size=x_sas.shape[1], mode='nearest').squeeze(1)
+            return x_sas, y.to(torch.int64)
 
         events = rearrange(events, 'B L t P C -> (B L) t P C', B=B, L=L)
         spike_idxes = self.snn(events.to(self.device))

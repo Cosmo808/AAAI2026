@@ -183,9 +183,9 @@ TrainFeatures = np.empty(
 )  # 0 for lack of intialization, 22 for channels, fs for num of points
 TrainLabels = np.empty([0, 1])
 TrainOffendingChannel = np.empty([0, 1])
-load_up_objects(
-    BaseDirTrain, TrainFeatures, TrainLabels, TrainOffendingChannel, train_out_dir
-)
+# load_up_objects(
+#     BaseDirTrain, TrainFeatures, TrainLabels, TrainOffendingChannel, train_out_dir
+# )
 
 BaseDirEval = os.path.join(root, "eval")
 fs = 200
@@ -194,9 +194,9 @@ EvalFeatures = np.empty(
 )  # 0 for lack of intialization, 22 for channels, fs for num of points
 EvalLabels = np.empty([0, 1])
 EvalOffendingChannel = np.empty([0, 1])
-load_up_objects(
-    BaseDirEval, EvalFeatures, EvalLabels, EvalOffendingChannel, eval_out_dir
-)
+# load_up_objects(
+#     BaseDirEval, EvalFeatures, EvalLabels, EvalOffendingChannel, eval_out_dir
+# )
 
 
 #transfer to train, eval, and test
@@ -217,27 +217,27 @@ val_files = [f for f in train_files if f.split("_")[0] in val_sub]
 train_files = [f for f in train_files if f.split("_")[0] in train_sub]
 
 
-if not os.path.exists(os.path.join(root, 'processed_eeg', 'processed_train')):
-    os.makedirs(os.path.join(root, 'processed_eeg', 'processed_train'))
-if not os.path.exists(os.path.join(root, 'processed_eeg', 'processed_eval')):
-    os.makedirs(os.path.join(root, 'processed_eeg', 'processed_eval'))
-if not os.path.exists(os.path.join(root, 'processed_eeg', 'processed_test')):
-    os.makedirs(os.path.join(root, 'processed_eeg', 'processed_test'))
+if not os.path.exists(os.path.join(root, 'processed_eeg', 'train')):
+    os.makedirs(os.path.join(root, 'processed_eeg', 'train'))
+if not os.path.exists(os.path.join(root, 'processed_eeg', 'val')):
+    os.makedirs(os.path.join(root, 'processed_eeg', 'val'))
+if not os.path.exists(os.path.join(root, 'processed_eeg', 'test')):
+    os.makedirs(os.path.join(root, 'processed_eeg', 'test'))
 
 for file in tqdm(train_files):
     shutil.copy(
         os.path.join(root, 'processed_train', file),
-        os.path.join(root, 'processed_eeg', 'processed_train', file)
+        os.path.join(root, 'processed_eeg', 'train', file)
     )
 for file in tqdm(val_files):
     shutil.copy(
         os.path.join(root, 'processed_train', file),
-        os.path.join(root, 'processed_eeg', 'processed_val', file)
+        os.path.join(root, 'processed_eeg', 'val', file)
     )
 for file in tqdm(test_files):
     shutil.copy(
         os.path.join(root, 'processed_eval', file),
-        os.path.join(root, 'processed_eeg', 'processed_test', file)
+        os.path.join(root, 'processed_eeg', 'test', file)
     )
 
 print('Done!')
