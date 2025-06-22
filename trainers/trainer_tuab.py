@@ -133,7 +133,7 @@ class Trainer(object):
 
             if no_spike:
                 spike_idx = torch.full((self.expect_spike_idxes.shape[-1],), - 1, dtype=spike_idx.dtype)
-                spike_idx[0] = torch.sort(torch.randperm(self.n_frames)[0])[0]
+                spike_idx[0] = torch.sort(torch.randperm(self.n_frames)[0])[0] if not self.args.frozen_snn else self.n_frames - 1
             self.spike_idxes[self.iter, b // L, b % L] = spike_idx.cpu()
 
         spike_loss = sum(spike_loss) / len(spike_loss)
@@ -211,7 +211,7 @@ class Trainer(object):
             optim_state = self.optimizer.state_dict()
 
             with torch.no_grad():
-                acc, pr_auc, roc_auc, cm, spike_loss = self.run_one_epoch(mode='val')
+                acc, pr_auc, roc_auc, cm, spike_loss = self.run_one_epoch(mode='test')
 
                 print(
                     "Epoch {}/{} | training loss: {:.2f}/{:.5f}, acc: {:.5f}, pr_auc: {:.5f}, roc_auc: {:.5f}, LR: {:.2e}, elapsed {:.1f} mins".format(
@@ -249,8 +249,8 @@ class Trainer(object):
             self.save_dict((acc, pr_auc, roc_auc, spike_loss))
 
     def save_dict(self, values):
-        if self.epoch == 0:
-            return
+        # if self.epoch == 0:
+        #     return
 
         if self.save_dir_ann is not None:
             if os.path.exists(self.save_dir_ann):
@@ -276,11 +276,11 @@ class Trainer(object):
             break
         duration = T / self.args.sr  # 10 seconds
         self.n_frames = int(duration * self.args.fps)  # 20 frames
-        # expect_spike_idxes = torch.ones(size=[len(self.data_loaders['train']), self.args.bs, L]) * (self.n_frames - 1)
-        self.expect_spike_idxes = torch.stack([
-            torch.sort(torch.randperm(self.n_frames)[:self.args.n_slice])[0]
-            for _ in range(len(self.data_loaders['train']) * self.args.bs * L)
-        ]).view(len(self.data_loaders['train']), self.args.bs, L, self.args.n_slice)
+        self.expect_spike_idxes = torch.ones(size=[len(self.data_loaders['train']), self.args.bs, L, self.args.n_slice]) * (self.n_frames - 1)
+        # self.expect_spike_idxes = torch.stack([
+        #     torch.sort(torch.randperm(self.n_frames)[:self.args.n_slice])[0]
+        #     for _ in range(len(self.data_loaders['train']) * self.args.bs * L)
+        # ]).view(len(self.data_loaders['train']), self.args.bs, L, self.args.n_slice)
         self.spike_idxes = torch.zeros_like(self.expect_spike_idxes) - 1
         self.spike_idxes[:, :, :, 0] = self.n_frames - 1
         self.downstream_metric = torch.zeros(size=[len(self.data_loaders['train']), self.args.bs], device=self.device)

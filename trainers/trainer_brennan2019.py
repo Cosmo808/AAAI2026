@@ -51,17 +51,17 @@ class Trainer(object):
             print(f"Loading snn ckpt from {args.ckpt_snn}")
         if args.ckpt_ann is not None:
             self.best_state_ann = torch.load(args.ckpt_ann, map_location=self.device)
-            self.ann.load_state_dict(self.best_state_ann)
+            self.ann.load_state_dict(self.best_state_ann, strict=False)
             print(f"Loading ann ckpt from {args.ckpt_ann}")
 
         self.negative_pool = None
         self.candidate_val = []
         self.candidate_test = []
         try:
-            for _, y, _, _ in self.data_loaders['val']:
-                self.candidate_val.append(y)
-            for _, y, _, _ in self.data_loaders['test']:
-                self.candidate_test.append(y)
+            for data_batch in self.data_loaders['val']:
+                self.candidate_val.append(data_batch[1])
+            for data_batch in self.data_loaders['test']:
+                self.candidate_test.append(data_batch[1])
             self.candidate_val = torch.cat(self.candidate_val, dim=0).float()
             self.candidate_test = torch.cat(self.candidate_test, dim=0).float()
             self.candidate_val = rearrange(self.candidate_val, 'A L C T -> (A L) C T')
@@ -90,6 +90,7 @@ class Trainer(object):
                     self.negative_pool = torch.cat((y_sas, self.negative_pool), dim=0)
             else:
                 candidate = y_sas
+
             scores = self.criterion_ann.get_scores(pred, candidate.float().to(self.device))
             loss = self.criterion_ann.get_ce_loss(scores)
             self.optimizer.zero_grad()
@@ -111,8 +112,10 @@ class Trainer(object):
 
         else:
             assert y_sas.shape[0] <= 50
-
-            total = y_sas.shape[0] + self.candidate_val.shape[0]
+            if self.epoch < self.args.max_epoch:
+                total = y_sas.shape[0] + self.candidate_val.shape[0]
+            else:
+                total = y_sas.shape[0] + self.candidate_test.shape[0]
             C, T = y_sas.shape[1], y_sas.shape[2]
 
             candidate_all = torch.empty((total, C, T), device=self.device, dtype=y_sas.dtype)
@@ -157,7 +160,7 @@ class Trainer(object):
                 sorted_list = sorted(flat_list)
                 spike_idx = [0] + sorted_list if sorted_list[0] != 0 else sorted_list
                 spike_time = torch.tensor(spike_idx) / self.args.fps * self.args.sr
-                spike_time = torch.round(spike_time).to(torch.int64)
+                spike_time = spike_time.to(torch.int64)
                 x_sas.append(torch.stack(
                     [self.resample_F(x[b, :, spike_time[i]:spike_time[i + 1]], sample_num=T) for i in range(len(spike_time) - 1)]
                 ))
@@ -194,7 +197,7 @@ class Trainer(object):
 
             if no_spike:
                 spike_idx = torch.full((self.expect_spike_idxes.shape[-1],), - 1, dtype=spike_idx.dtype)
-                spike_idx[0] = torch.sort(torch.randperm(self.n_frames)[0])[0]
+                spike_idx[0] = torch.sort(torch.randperm(self.n_frames)[0])[0] if not self.args.frozen_snn else self.n_frames - 1
             self.spike_idxes[self.iter, b // L, b % L] = spike_idx.cpu()
 
         spike_loss = sum(spike_loss) / len(spike_loss)
@@ -322,7 +325,7 @@ class Trainer(object):
         for data_batch in self.data_loaders['train']:
             B, L, C, T = data_batch[0].shape  # B, 5, 60, 1000
             break
-        duration = T / self.args.sr  # 8.3333 seconds
+        duration = T / self.args.sr  # 8.334 seconds
         self.n_frames = round(duration * self.args.fps)  # 25 frames
         # expect_spike_idxes = torch.ones(size=[len(self.data_loaders['train']), B, L]) * (self.n_frames - 1)
         self.expect_spike_idxes = torch.stack([

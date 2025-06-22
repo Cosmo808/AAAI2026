@@ -224,8 +224,7 @@ class GroupCosineAnnealingLR(torch.optim.lr_scheduler._LRScheduler):
 
 
 class wav_processor:
-    def __init__(self):
-        model_name = "facebook/wav2vec2-base-10k-voxpopuli"
+    def __init__(self, model_name="facebook/wav2vec2-base-10k-voxpopuli"):
         self.feature_extractor = Wav2Vec2FeatureExtractor.from_pretrained(model_name)
         self.model = Wav2Vec2Model.from_pretrained(model_name)
         self.model.eval()

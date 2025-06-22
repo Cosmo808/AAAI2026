@@ -134,7 +134,7 @@ class Trainer(object):
 
             if no_spike:
                 spike_idx = torch.full((self.expect_spike_idxes.shape[-1],), - 1, dtype=spike_idx.dtype)
-                spike_idx[0] = torch.sort(torch.randperm(self.n_frames)[0])[0]
+                spike_idx[0] = torch.sort(torch.randperm(self.n_frames)[0])[0] if not self.args.frozen_snn else self.n_frames - 1
             self.spike_idxes[self.iter, b // L, b % L] = spike_idx.cpu()
 
         spike_loss = sum(spike_loss) / len(spike_loss)

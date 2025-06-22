@@ -4,9 +4,12 @@ import random
 from models.snn import SAS
 from models.utils import *
 
-from data_loader import data_isruc, data_broderick2019, data_brennan2019, data_mumtaz2016, data_mental, data_tuab, data_tuev
-from models import model_isruc, model_broderick2019, model_brennan2019, model_mumtaz2016, model_mental, model_tuab, model_tuev
-from trainers import trainer_isruc, trainer_broderick2019, trainer_brennan2019, trainer_mumtaz2016, trainer_mental, trainer_tuab, trainer_tuev
+from data_loader import data_isruc, data_broderick2019, data_brennan2019, data_mumtaz2016, data_mental, \
+    data_tuab, data_tuev, data_bcic2020, data_schoffelen2019, data_gwilliams2022
+from models import model_isruc, model_broderick2019, model_brennan2019, model_mumtaz2016, model_mental, \
+    model_tuab, model_tuev, model_bcic2020, model_schoffelen2019, model_gwilliams2022
+from trainers import trainer_isruc, trainer_broderick2019, trainer_brennan2019, trainer_mumtaz2016, trainer_mental, \
+    trainer_tuab, trainer_tuev, trainer_bcic2020, trainer_schoffelen2019, trainer_gwilliams2022
 
 
 if __name__ == '__main__':
@@ -15,7 +18,7 @@ if __name__ == '__main__':
     parser.add_argument('--seed', type=int, default=1)
     parser.add_argument('--max_epoch', type=int, default=30)
     parser.add_argument('--early_stop_epoch', type=int, default=20)
-    parser.add_argument('--bs', type=int, default=16)
+    parser.add_argument('--bs', type=int, default=10)
     parser.add_argument('--lr', type=float, default=3e-4)
     parser.add_argument('--multi_lr', action='store_true', default=False)
     parser.add_argument('--weight_decay', type=float, default=5e-2)
@@ -24,8 +27,8 @@ if __name__ == '__main__':
     parser.add_argument('--label_smoothing', type=float, default=0.1)
 
     parser.add_argument('--datasets', type=str, default='TUEV',
-                        choices=['brennan2019', 'broderick2019',
-                                 'ISRUC', 'TUEV',
+                        choices=['brennan2019', 'broderick2019', 'schoffelen2019', 'gwilliams2020',
+                                 'ISRUC', 'TUEV', 'BCIC2020',
                                  'Mumtaz2016', 'MentalArithmetic', 'TUAB'])
     parser.add_argument('--model', type=str, default='cbramod', choices=['simplecnn', 'cbramod', 'labram'])
     parser.add_argument('--n_negatives', type=int, default=None)
@@ -51,7 +54,7 @@ if __name__ == '__main__':
     if args.eval:
         args.frozen_ann = True
         args.frozen_snn = True
-        args.max_epoch = 1
+        args.max_epoch = 0
 
     # clear cache
     # for file_path in glob.glob(os.path.join(rf"{args.base_dir}\cache", "*")):
@@ -70,7 +73,6 @@ if __name__ == '__main__':
         args.n_classes = 5
         args.n_subjects = 100
         args.n_channels = 6
-        args.n_slice = 1
         args.sr = 200
         args.fps = 1
         data_loaders = data_isruc.LoadDataset(args)
@@ -82,7 +84,6 @@ if __name__ == '__main__':
         args.n_classes = 2
         args.n_subjects = 64
         args.n_channels = 19
-        args.n_slice = 1
         args.sr = 200
         args.fps = 10
         data_loaders = data_mumtaz2016.LoadDataset(args)
@@ -94,7 +95,6 @@ if __name__ == '__main__':
         args.n_classes = 2
         args.n_subjects = 36
         args.n_channels = 20
-        args.n_slice = 1
         args.sr = 200
         args.fps = 10
         data_loaders = data_mental.LoadDataset(args)
@@ -106,7 +106,6 @@ if __name__ == '__main__':
         args.n_classes = 2
         args.n_subjects = 1
         args.n_channels = 16
-        args.n_slice = 1
         args.sr = 200
         args.fps = 2
         data_loaders = data_tuab.LoadDataset(args)
@@ -118,7 +117,6 @@ if __name__ == '__main__':
         args.n_classes = 6
         args.n_subjects = 1
         args.n_channels = 16
-        args.n_slice = 1
         args.sr = 200
         args.fps = 4
         data_loaders = data_tuev.LoadDataset(args)
@@ -126,11 +124,21 @@ if __name__ == '__main__':
         eeg_model = model_tuev.Model(args)
         snn_model = SAS(args)
         trainer = trainer_tuev
+    elif args.datasets == 'BCIC2020':
+        args.n_classes = 5
+        args.n_subjects = 15
+        args.n_channels = 16
+        args.sr = 200
+        args.fps = 10
+        data_loaders = data_bcic2020.LoadDataset(args)
+        data_loaders = data_loaders.get_data_loader()
+        eeg_model = model_bcic2020.Model(args)
+        snn_model = SAS(args)
+        trainer = trainer_bcic2020
     elif args.datasets == 'broderick2019':
         args.n_negatives = 100
         args.n_subjects = 19
         args.n_channels = 128
-        args.n_slice = 1
         args.sr = 120
         args.fps = 5
         data_loaders = data_broderick2019.LoadDataset(args)
@@ -142,7 +150,6 @@ if __name__ == '__main__':
         args.n_negatives = 200
         args.n_subjects = 32
         args.n_channels = 60
-        args.n_slice = 1
         args.sr = 120
         args.fps = 3
         data_loaders = data_brennan2019.LoadDataset(args)
@@ -150,6 +157,28 @@ if __name__ == '__main__':
         eeg_model = model_brennan2019.Model(args)
         snn_model = SAS(args)
         trainer = trainer_brennan2019
+    elif args.datasets == 'schoffelen2019':
+        args.n_negatives = 100
+        args.n_subjects = 30
+        args.n_channels = 273
+        args.sr = 120
+        args.fps = 4
+        data_loaders = data_schoffelen2019.LoadDataset(args)
+        data_loaders = data_loaders.get_data_loader()
+        eeg_model = model_schoffelen2019.Model(args)
+        snn_model = SAS(args)
+        trainer = trainer_schoffelen2019
+    elif args.datasets == 'gwilliams2020':
+        args.n_negatives = 100
+        args.n_subjects = 27
+        args.n_channels = 208
+        args.sr = 120
+        args.fps = 2
+        data_loaders = data_gwilliams2022.LoadDataset(args)
+        data_loaders = data_loaders.get_data_loader()
+        eeg_model = model_gwilliams2022.Model(args)
+        snn_model = SAS(args)
+        trainer = trainer_gwilliams2022
 
     # optimizer and scheduler
     backbone_params = []

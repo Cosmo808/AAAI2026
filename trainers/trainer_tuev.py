@@ -134,7 +134,7 @@ class Trainer(object):
 
             if no_spike:
                 spike_idx = torch.full((self.expect_spike_idxes.shape[-1],), - 1, dtype=spike_idx.dtype)
-                spike_idx[0] = torch.sort(torch.randperm(self.n_frames)[0])[0] if training else self.n_frames - 1
+                spike_idx[0] = torch.sort(torch.randperm(self.n_frames)[0])[0] if not self.args.frozen_snn else self.n_frames - 1
             self.spike_idxes[self.iter, b // L, b % L] = spike_idx.cpu()
 
         spike_loss = sum(spike_loss) / len(spike_loss)
@@ -217,7 +217,7 @@ class Trainer(object):
                 )
                 # print(cm)
                 if kappa > kappa_best:
-                    print("kappa or spike_loss increasing....saving weights !! ")
+                    print("val metric increasing....saving weights !! ")
                     print(
                         "Val Evaluation: acc: {:.5f}, kappa: {:.5f}, f1: {:.5f}, spike_loss: {:.3f}".format(
                             acc, kappa, f1, spike_loss)
@@ -236,7 +236,7 @@ class Trainer(object):
         self.snn.load_state_dict(self.best_state_snn)
         with torch.no_grad():
             print("***************************Test results************************")
-            acc, kappa, f1, cm, spike_loss = self.run_one_epoch(mode='val')
+            acc, kappa, f1, cm, spike_loss = self.run_one_epoch(mode='test')
             print(
                 "Test Evaluation: acc: {:.5f}, kappa: {:.5f}, f1: {:.5f}, spike_loss{:.5f}".format(
                     acc, kappa, f1, spike_loss)
@@ -246,8 +246,8 @@ class Trainer(object):
             self.save_dict((acc, kappa, f1, spike_loss))
 
     def save_dict(self, values):
-        if self.epoch == 0:
-            return
+        # if self.epoch == 0:
+        #     return
 
         if self.save_dir_ann is not None:
             if os.path.exists(self.save_dir_ann):
@@ -273,11 +273,11 @@ class Trainer(object):
             break
         duration = T / self.args.sr  # 5 seconds
         self.n_frames = int(duration * self.args.fps)  # 20 frames
-        # expect_spike_idxes = torch.ones(size=[len(self.data_loaders['train']), self.args.bs, L]) * (self.n_frames - 1)
-        self.expect_spike_idxes = torch.stack([
-            torch.sort(torch.randperm(self.n_frames)[:self.args.n_slice])[0]
-            for _ in range(len(self.data_loaders['train']) * self.args.bs * L)
-        ]).view(len(self.data_loaders['train']), self.args.bs, L, self.args.n_slice)
+        self.expect_spike_idxes = torch.ones(size=[len(self.data_loaders['train']), self.args.bs, L, self.args.n_slice]) * (self.n_frames - 1)
+        # self.expect_spike_idxes = torch.stack([
+        #     torch.sort(torch.randperm(self.n_frames)[:self.args.n_slice])[0]
+        #     for _ in range(len(self.data_loaders['train']) * self.args.bs * L)
+        # ]).view(len(self.data_loaders['train']), self.args.bs, L, self.args.n_slice)
         self.spike_idxes = torch.zeros_like(self.expect_spike_idxes) - 1
         self.spike_idxes[:, :, :, 0] = self.n_frames - 1
         self.downstream_metric = torch.zeros(size=[len(self.data_loaders['train']), self.args.bs], device=self.device)
@@ -293,7 +293,7 @@ class Trainer(object):
             elif mode == 'max':
                 p = metric[b] / self.downstream_metric[self.iter, b]
 
-            if u < p:  # accept
+            if p > 1:  # accept
                 accept.append(b)
                 self.expect_spike_idxes[self.iter, b] = self.spike_idxes[self.iter, b]
         # print(f"Accept {len(accept)}/{self.args.bs} batches for new slicing labels for iter {self.iter} ")

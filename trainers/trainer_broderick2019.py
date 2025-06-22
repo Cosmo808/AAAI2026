@@ -153,7 +153,7 @@ class Trainer(object):
             x_sas = []
             y_sas = []
             for b in range(B):
-                spike_idx = self.spike_idxes[self.iter, b]   # [L, 3]
+                spike_idx = self.spike_idxes[self.iter, b]   # [L, ]
                 # spike_idx = [self.n_frames if len(s) == 0 else s[0].item() + 1 for s in spike_idx]
                 flat_list = [s.item() + 1 + i * self.n_frames for i, row in enumerate(spike_idx) for s in row if s != -1]
                 sorted_list = sorted(flat_list)
@@ -196,7 +196,7 @@ class Trainer(object):
 
             if no_spike:
                 spike_idx = torch.full((self.expect_spike_idxes.shape[-1],), - 1, dtype=spike_idx.dtype)
-                spike_idx[0] = torch.sort(torch.randperm(self.n_frames)[0])[0]
+                spike_idx[0] = torch.sort(torch.randperm(self.n_frames)[0])[0] if not self.args.frozen_snn else self.n_frames - 1
             self.spike_idxes[self.iter, b // L, b % L] = spike_idx.cpu()
 
         spike_loss = sum(spike_loss) / len(spike_loss)
