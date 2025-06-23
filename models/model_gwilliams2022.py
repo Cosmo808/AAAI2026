@@ -12,11 +12,16 @@ from typing import Optional, Any, Union, Callable
 class Model(nn.Module):
     def __init__(self, args: Any):
         super().__init__()
+        down_size = 128
+        self.downsample = nn.Sequential(
+            nn.Conv1d(208, down_size, kernel_size=3, stride=1, padding=1),
+            nn.GroupNorm(num_groups=16, num_channels=down_size),
+        )
 
         self.model_name = args.model
         if args.model == 'simplecnn':
             self.backbone = SimpleConv(
-                in_channels=208, out_channels=240, num_layers=1,
+                in_channels=down_size, out_channels=2 * down_size, num_layers=1,
                 feature_dim=768, n_subjects=27
             )
         else:
@@ -33,35 +38,35 @@ class Model(nn.Module):
             elif args.model == 'labram':
                 self.backbone = generate_labram()
 
-            self.subject_layer = SubjectLayers(208, 208, 27)
+            self.subject_layer = SubjectLayers(down_size, down_size, 27)
 
             self.final = nn.Sequential(
-                nn.Conv1d(208, 480, kernel_size=1, stride=1),
+                nn.Conv1d(down_size, 2 * down_size, kernel_size=1, stride=1),
                 # nn.BatchNorm1d(2 * 128),
-                nn.GroupNorm(num_groups=16, num_channels=480),
+                nn.GroupNorm(num_groups=16, num_channels=2 * down_size),
                 nn.Dropout(0.5),
                 nn.GELU(),
-                nn.ConvTranspose1d(480, 1024, kernel_size=1, stride=1),
+                nn.ConvTranspose1d(2 * down_size, 768, kernel_size=1, stride=1),
             )
 
     def forward(self, x, subjects=None):
         B, L, C, T = x.shape   # [bs, 5, 208, 10 * 120 = 1200]
+        x = rearrange(x, 'B L C T -> (B L) C T')
+        x = self.downsample(x)
 
         if self.model_name == 'simplecnn':
-            x = rearrange(x, 'B L C T -> (B L) C T')
             if subjects is None:
                 subjects = torch.zeros(B * L).to(torch.int64).to(x.device)
             x = self.backbone(x, subjects)
             return x
 
         else:
-            x = rearrange(x, 'B L C T -> (B L) C T')
             if subjects is not None:
                 subjects = rearrange(subjects, 'B L -> (B L)')
                 x = self.subject_layer(x, subjects)
-            x = rearrange(x, 'BL C (a t) -> BL C a t', C=C, t=200)
+            x = rearrange(x, 'BL C (a t) -> BL C a t', t=200)
             x = self.backbone(x)
-            x = rearrange(x, 'BL C a t -> BL C (a t)', C=C, t=200)
+            x = rearrange(x, 'BL C a t -> BL C (a t)', t=200)
             x = self.final(x)
             return x
 

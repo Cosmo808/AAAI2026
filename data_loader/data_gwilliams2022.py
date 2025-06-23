@@ -18,7 +18,7 @@ class CustomDataset(Dataset):
         return len((self.seqs_labels_path_pair))
 
     def __getitem__(self, idx):
-        subject_id = int(self.seqs_labels_path_pair[idx][0].split('\\')[-2].split('_')[0][1:]) - 1
+        subject_id = int(self.seqs_labels_path_pair[idx][0].split('\\')[-2].split('_')[0]) - 1
         seq_path = self.seqs_labels_path_pair[idx][0]
         label_path = self.seqs_labels_path_pair[idx][1]
         event_path = self.seqs_labels_path_pair[idx][2]
@@ -97,14 +97,14 @@ class LoadDataset(object):
             ),
             'val': DataLoader(
                 val_set,
-                batch_size=10,
+                batch_size=5,
                 collate_fn=val_set.collate,
                 shuffle=False,
                 drop_last=True,
             ),
             'test': DataLoader(
                 test_set,
-                batch_size=10,
+                batch_size=5,
                 collate_fn=test_set.collate,
                 shuffle=False,
                 drop_last=True,
@@ -152,34 +152,50 @@ class LoadDataset(object):
         return seqs_labels_path_pair
 
     def split_dataset(self, seqs_labels_path_pair, seed=42):
+        seqs_flatten = []
+        for pair in seqs_labels_path_pair:
+            seqs_flatten.extend(pair)
+
         random.seed(seed)
+        random.shuffle(seqs_flatten)
 
-        subject_num = [
-            8, 8, 4, 8, 8, 8, 8, 8, 8, 8,
-            8, 4, 8, 8, 8, 4, 8, 8, 8, 4,
-            4, 8, 8, 8, 8, 8, 8
-        ]
-        assert sum(subject_num) == len(seqs_labels_path_pair), "Length mismatch!"
+        total = len(seqs_flatten)
+        n_val = int(total * 0.2)
+        n_train = total - 2 * n_val
 
-        train_pairs, val_pairs, test_pairs = [], [], []
+        train_split = seqs_flatten[:n_train]
+        val_split = seqs_flatten[n_train:n_train + n_val]
+        test_split = seqs_flatten[n_train + n_val:]
+        return train_split, val_split, test_split
 
-        start_idx = 0
-        for i, num in enumerate(subject_num):
-            end_idx = start_idx + num
-            samples = seqs_labels_path_pair[start_idx:end_idx]
-            start_idx = end_idx
 
-            selected = random.sample(samples, num)
-            if num == 8:
-                train, val, test = selected[:5], selected[5:7], selected[7:]
-            elif num == 4:
-                train, val, test = selected[:2], selected[2:3], selected[3:]
-
-            train_pairs.append(train)
-            val_pairs.append(val)
-            test_pairs.append(test)
-
-        train_pairs = [item for sublist in train_pairs for item in sublist]
-        val_pairs = [item for sublist in val_pairs for item in sublist]
-        test_pairs = [item for sublist in test_pairs for item in sublist]
-        return train_pairs, val_pairs, test_pairs
+        # random.seed(seed)
+        # subject_num = [
+        #     8, 8, 4, 8, 8, 8, 8, 8, 8, 8,
+        #     8, 4, 8, 8, 8, 4, 8, 8, 8, 4,
+        #     4, 8, 8, 8, 8, 8, 8
+        # ]
+        # assert sum(subject_num) == len(seqs_labels_path_pair), "Length mismatch!"
+        #
+        # train_pairs, val_pairs, test_pairs = [], [], []
+        #
+        # start_idx = 0
+        # for i, num in enumerate(subject_num):
+        #     end_idx = start_idx + num
+        #     samples = seqs_labels_path_pair[start_idx:end_idx]
+        #     start_idx = end_idx
+        #
+        #     selected = random.sample(samples, num)
+        #     if num == 8:
+        #         train, val, test = selected[:5], selected[5:7], selected[7:]
+        #     elif num == 4:
+        #         train, val, test = selected[:2], selected[2:3], selected[3:]
+        #
+        #     train_pairs.append(train)
+        #     val_pairs.append(val)
+        #     test_pairs.append(test)
+        #
+        # train_pairs = [item for sublist in train_pairs for item in sublist]
+        # val_pairs = [item for sublist in val_pairs for item in sublist]
+        # test_pairs = [item for sublist in test_pairs for item in sublist]
+        # return train_pairs, val_pairs, test_pairs

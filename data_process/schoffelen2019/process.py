@@ -100,7 +100,9 @@ def main():
                 torch.save(labels, rf"{label_dir}\{subject}\{num}.pth")
                 torch.save(events, rf"{event_dir}\{subject}\{num}.pth")
                 torch.save(texts, rf"{text_dir}\{subject}\{num}.pth")
-                eegs, labels, texts = [], [], []
+                eegs = [eegs[i] for i in range(1, seq_length)]
+                labels = [labels[i] for i in range(1, seq_length)]
+                texts = [texts[i] for i in range(1, seq_length)]
                 num += 1
 
 

@@ -27,7 +27,7 @@ if __name__ == '__main__':
     parser.add_argument('--label_smoothing', type=float, default=0.1)
 
     parser.add_argument('--datasets', type=str, default='TUEV',
-                        choices=['brennan2019', 'broderick2019', 'schoffelen2019', 'gwilliams2020',
+                        choices=['brennan2019', 'broderick2019', 'schoffelen2019', 'gwilliams2022',
                                  'ISRUC', 'TUEV', 'BCIC2020',
                                  'Mumtaz2016', 'MentalArithmetic', 'TUAB'])
     parser.add_argument('--model', type=str, default='cbramod', choices=['simplecnn', 'cbramod', 'labram'])
@@ -168,7 +168,7 @@ if __name__ == '__main__':
         eeg_model = model_schoffelen2019.Model(args)
         snn_model = SAS(args)
         trainer = trainer_schoffelen2019
-    elif args.datasets == 'gwilliams2020':
+    elif args.datasets == 'gwilliams2022':
         args.n_negatives = 100
         args.n_subjects = 27
         args.n_channels = 208

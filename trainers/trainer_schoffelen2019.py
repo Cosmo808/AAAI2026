@@ -60,12 +60,8 @@ class Trainer(object):
         try:
             for data_batch in self.data_loaders['val']:
                 self.candidate_val.append(data_batch[1])
-            for data_batch in self.data_loaders['test']:
-                self.candidate_test.append(data_batch[1])
             self.candidate_val = torch.cat(self.candidate_val, dim=0).float()
-            self.candidate_test = torch.cat(self.candidate_test, dim=0).float()
             self.candidate_val = rearrange(self.candidate_val, 'A L C T -> (A L) C T')
-            self.candidate_test = rearrange(self.candidate_test, 'A L C T -> (A L) C T')
         except KeyError:
             pass
 
@@ -149,6 +145,8 @@ class Trainer(object):
         B, L, C, T = x.shape
 
         if slice:
+            if self.args.frozen_snn:
+                return x.to(self.device), y.to(self.device)
             x = rearrange(x, 'B L C T -> B C (L T)', L=L, T=T).to(self.device)
             y = rearrange(y, 'B L C T -> B C (L T)', L=L, T=T).to(self.device)
             x_sas = []
@@ -291,6 +289,11 @@ class Trainer(object):
         self.snn.load_state_dict(self.best_state_snn)
         with torch.no_grad():
             print("***************************Test results************************")
+            torch.cuda.empty_cache()
+            for data_batch in self.data_loaders['test']:
+                self.candidate_test.append(data_batch[1])
+            self.candidate_test = torch.cat(self.candidate_test, dim=0).float()
+            self.candidate_test = rearrange(self.candidate_test, 'A L C T -> (A L) C T').to(self.device)
             top10_50, top10_all, spike_loss = self.run_one_epoch(mode='test')
             print(
                 "Test Evaluation: top10@50: {:.5f}, top10@All: {:.5f}, spike_loss{:.5f}".format(

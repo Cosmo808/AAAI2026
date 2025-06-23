@@ -149,6 +149,8 @@ class Trainer(object):
         B, L, C, T = x.shape
 
         if slice:
+            if self.args.frozen_snn:
+                return x.to(self.device), y.to(self.device)
             x = rearrange(x, 'B L C T -> B C (L T)', L=L, T=T).to(self.device)
             y = rearrange(y, 'B L C T -> B C (L T)', L=L, T=T).to(self.device)
             x_sas = []
