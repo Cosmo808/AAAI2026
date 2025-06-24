@@ -97,14 +97,14 @@ class LoadDataset(object):
             ),
             'val': DataLoader(
                 val_set,
-                batch_size=5,
+                batch_size=10,
                 collate_fn=val_set.collate,
                 shuffle=False,
                 drop_last=True,
             ),
             'test': DataLoader(
                 test_set,
-                batch_size=5,
+                batch_size=10,
                 collate_fn=test_set.collate,
                 shuffle=False,
                 drop_last=True,
@@ -166,7 +166,7 @@ class LoadDataset(object):
         train_split = seqs_flatten[:n_train]
         val_split = seqs_flatten[n_train:n_train + n_val]
         test_split = seqs_flatten[n_train + n_val:]
-        return train_split, val_split, test_split
+        return train_split + test_split, val_split, test_split
 
 
         # random.seed(seed)

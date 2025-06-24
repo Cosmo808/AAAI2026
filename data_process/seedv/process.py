@@ -1,10 +1,8 @@
-import scipy
-from scipy import signal
+from tqdm import tqdm
 import os
-import lmdb
-import pickle
-import numpy as np
+import torch
 import mne
+from models.utils import Brain2Event
 
 useless_ch = ['M1', 'M2', 'VEO', 'HEO']
 trials_of_sessions = {
@@ -23,7 +21,7 @@ labels_of_sessions = {
     '3': [2, 1, 3, 0, 4, 4, 0, 3, 2, 1, 3, 4, 1, 2, 0, ],
 }
 
-root_dir = '/data/datasets/BigDownstream/SEED-V/files'
+root_dir = r'E:\NIPS2026\datasets\SEED-V\EEG_raw'
 files = [file for file in os.listdir(root_dir)]
 files = sorted(files)
 print(files)
@@ -40,12 +38,19 @@ dataset = {
     'test': list(),
 }
 
-db = lmdb.open('/data/datasets/BigDownstream/SEED-V/processed', map_size=15614542346)
+class Param:
+    pass
+param = Param()
+param.C = 0.2
+param.fps = 10
+param.sr = 200
+b2e = Brain2Event(param)
 
 for file in files:
+    if '.cnt' not in file:
+        continue
     raw = mne.io.read_raw_cnt(os.path.join(root_dir, file), preload=True)
     raw.drop_channels(useless_ch)
-    # raw.set_eeg_reference(ref_channels='average')
     raw.resample(200)
     raw.filter(l_freq=0.3, h_freq=75)
     data_matrix = raw.get_data(units='uV')
@@ -56,24 +61,32 @@ for file in files:
         for j in range(15)]
     labels = labels_of_sessions[session_index]
     for mode in trials_split.keys():
-        for index in trials_split[mode]:
+        seq_dir = rf'E:\NIPS2026\datasets\SEED-V\{mode}\seq'
+        label_dir = rf'E:\NIPS2026\datasets\SEED-V\{mode}\labels'
+        event_dir = rf'E:\NIPS2026\datasets\SEED-V\{mode}\events'
+        num = 0
+        for index in tqdm(trials_split[mode]):
             data = data_trials[index]
             label = labels[index]
-            print(data.shape)
             data = data.reshape(62, -1, 1, 200)
-            data = data.transpose(1, 0, 2, 3)
-            print(data.shape)
-            for i, sample in enumerate(data):
-                sample_key = f'{file}-{index}-{i}'
-                data_dict = {
-                    'sample': sample, 'label': label
-                }
-                txn = db.begin(write=True)
-                txn.put(key=sample_key.encode(), value=pickle.dumps(data_dict))
-                txn.commit()
-                dataset[mode].append(sample_key)
+            data = data.transpose(1, 2, 0, 3)
 
-txn = db.begin(write=True)
-txn.put(key='__keys__'.encode(), value=pickle.dumps(dataset))
-txn.commit()
-db.close()
+            data = torch.tensor(data)
+            epochs_events = []
+            for seq in data:
+                events = b2e.forward(seq)
+                epochs_events.append(events)
+            epochs_events = torch.stack(epochs_events)
+
+            label_s = torch.ones(size=data.shape[:2]) * label
+
+            subject_id = file.split('.')[0]
+            os.makedirs(rf"{seq_dir}\{subject_id}", exist_ok=True)
+            os.makedirs(rf"{label_dir}\{subject_id}", exist_ok=True)
+            os.makedirs(rf"{event_dir}\{subject_id}", exist_ok=True)
+            for eeg, label, event in zip(data, label_s, epochs_events):
+                torch.save(eeg.clone(), rf"{seq_dir}\{subject_id}\{num}.pth")  # [1, 62, 200]
+                torch.save(label.clone(), rf"{label_dir}\{subject_id}\{num}.pth")
+                torch.save(event.clone(), rf"{event_dir}\{subject_id}\{num}.pth")  # [1, 10, 2, 62]
+                num += 1
+

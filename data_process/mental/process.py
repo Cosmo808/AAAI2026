@@ -2,6 +2,7 @@ import os
 import mne
 from models.utils import Brain2Event
 import torch
+from tqdm import tqdm
 
 root_dir = r'E:\NIPS2026\datasets\MentalArithmetic'
 files = [file for file in os.listdir(root_dir)]
@@ -37,7 +38,7 @@ for files_key in files_dict.keys():
     seq_dir = rf'E:\NIPS2026\datasets\MentalArithmetic\{files_key}\seq'
     label_dir = rf'E:\NIPS2026\datasets\MentalArithmetic\{files_key}\labels'
     event_dir = rf'E:\NIPS2026\datasets\MentalArithmetic\{files_key}\events'
-    for file in files_dict[files_key]:
+    for file in tqdm(files_dict[files_key]):
         if '.edf' not in file:
             continue
         raw = mne.io.read_raw_edf(os.path.join(root_dir, file), preload=True)
@@ -67,7 +68,7 @@ for files_key in files_dict.keys():
         os.makedirs(rf"{event_dir}\{subject_id}", exist_ok=True)
         num = 0
         for eeg, label, event in zip(eeg_array, labels, epochs_events):
-            torch.save(eeg, rf"{seq_dir}\{subject_id}\{num}_{label_s}.pth")
-            torch.save(label, rf"{label_dir}\{subject_id}\{num}_{label_s}.pth")
-            torch.save(event, rf"{event_dir}\{subject_id}\{num}_{label_s}.pth")
+            torch.save(eeg.clone(), rf"{seq_dir}\{subject_id}\{num}_{label_s}.pth")
+            torch.save(label.clone(), rf"{label_dir}\{subject_id}\{num}_{label_s}.pth")
+            torch.save(event.clone(), rf"{event_dir}\{subject_id}\{num}_{label_s}.pth")
             num += 1

@@ -5,11 +5,11 @@ from models.snn import SAS
 from models.utils import *
 
 from data_loader import data_isruc, data_broderick2019, data_brennan2019, data_mumtaz2016, data_mental, \
-    data_tuab, data_tuev, data_bcic2020, data_schoffelen2019, data_gwilliams2022
+    data_tuab, data_tuev, data_bcic2020, data_schoffelen2019, data_gwilliams2022, data_seedvig, data_seedv
 from models import model_isruc, model_broderick2019, model_brennan2019, model_mumtaz2016, model_mental, \
-    model_tuab, model_tuev, model_bcic2020, model_schoffelen2019, model_gwilliams2022
+    model_tuab, model_tuev, model_bcic2020, model_schoffelen2019, model_gwilliams2022, model_seedvig, model_seedv
 from trainers import trainer_isruc, trainer_broderick2019, trainer_brennan2019, trainer_mumtaz2016, trainer_mental, \
-    trainer_tuab, trainer_tuev, trainer_bcic2020, trainer_schoffelen2019, trainer_gwilliams2022
+    trainer_tuab, trainer_tuev, trainer_bcic2020, trainer_schoffelen2019, trainer_gwilliams2022, trainer_seedvig, trainer_seedv
 
 
 if __name__ == '__main__':
@@ -28,7 +28,8 @@ if __name__ == '__main__':
 
     parser.add_argument('--datasets', type=str, default='TUEV',
                         choices=['brennan2019', 'broderick2019', 'schoffelen2019', 'gwilliams2022',
-                                 'ISRUC', 'TUEV', 'BCIC2020',
+                                 'SEED-VIG',
+                                 'ISRUC', 'TUEV', 'BCIC2020', 'SEED-V',
                                  'Mumtaz2016', 'MentalArithmetic', 'TUAB'])
     parser.add_argument('--model', type=str, default='cbramod', choices=['simplecnn', 'cbramod', 'labram'])
     parser.add_argument('--n_negatives', type=int, default=None)
@@ -81,7 +82,6 @@ if __name__ == '__main__':
         snn_model = SAS(args)
         trainer = trainer_isruc
     elif args.datasets == 'Mumtaz2016':
-        args.n_classes = 2
         args.n_subjects = 64
         args.n_channels = 19
         args.sr = 200
@@ -92,7 +92,6 @@ if __name__ == '__main__':
         snn_model = SAS(args)
         trainer = trainer_mumtaz2016
     elif args.datasets == 'MentalArithmetic':
-        args.n_classes = 2
         args.n_subjects = 36
         args.n_channels = 20
         args.sr = 200
@@ -102,8 +101,28 @@ if __name__ == '__main__':
         eeg_model = model_mental.Model(args)
         snn_model = SAS(args)
         trainer = trainer_mental
+    elif args.datasets == 'SEED-VIG':
+        args.n_subjects = 1
+        args.n_channels = 17
+        args.sr = 200
+        args.fps = 3
+        data_loaders = data_seedvig.LoadDataset(args)
+        data_loaders = data_loaders.get_data_loader()
+        eeg_model = model_seedvig.Model(args)
+        snn_model = SAS(args)
+        trainer = trainer_seedvig
+    elif args.datasets == 'SEED-V':
+        args.n_classes = 5
+        args.n_subjects = 16
+        args.n_channels = 62
+        args.sr = 200
+        args.fps = 10
+        data_loaders = data_seedv.LoadDataset(args)
+        data_loaders = data_loaders.get_data_loader()
+        eeg_model = model_seedv.Model(args)
+        snn_model = SAS(args)
+        trainer = trainer_seedv
     elif args.datasets == 'TUAB':
-        args.n_classes = 2
         args.n_subjects = 1
         args.n_channels = 16
         args.sr = 200
@@ -158,7 +177,6 @@ if __name__ == '__main__':
         snn_model = SAS(args)
         trainer = trainer_brennan2019
     elif args.datasets == 'schoffelen2019':
-        args.n_negatives = 100
         args.n_subjects = 30
         args.n_channels = 273
         args.sr = 120
@@ -169,7 +187,6 @@ if __name__ == '__main__':
         snn_model = SAS(args)
         trainer = trainer_schoffelen2019
     elif args.datasets == 'gwilliams2022':
-        args.n_negatives = 100
         args.n_subjects = 27
         args.n_channels = 208
         args.sr = 120

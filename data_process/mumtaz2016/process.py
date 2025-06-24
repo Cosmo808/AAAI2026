@@ -2,7 +2,7 @@ import os
 import mne
 import numpy as np
 import torch
-import pickle
+from tqdm import tqdm
 from models.utils import Brain2Event
 
 
@@ -65,7 +65,7 @@ for files_key in files_dict.keys():
     seq_dir = rf'E:\NIPS2026\datasets\Mumtaz2016\{files_key}\seq'
     label_dir = rf'E:\NIPS2026\datasets\Mumtaz2016\{files_key}\labels'
     event_dir = rf'E:\NIPS2026\datasets\Mumtaz2016\{files_key}\events'
-    for file in files_dict[files_key]:
+    for file in tqdm(files_dict[files_key]):
         raw = mne.io.read_raw_edf(os.path.join(rootDir, file), preload=True)
         # print(raw.info['ch_names'])
         raw.pick_channels(selected_channels, ordered=True)
@@ -107,7 +107,7 @@ for files_key in files_dict.keys():
         os.makedirs(rf"{event_dir}\{subject_id}", exist_ok=True)
         num = 0
         for eeg, label, event in zip(eeg_array, labels, epochs_events):
-            torch.save(eeg, rf"{seq_dir}\{subject_id}\{num}.pth")
-            torch.save(label, rf"{label_dir}\{subject_id}\{num}.pth")
-            torch.save(event, rf"{event_dir}\{subject_id}\{num}.pth")
+            torch.save(eeg.clone(), rf"{seq_dir}\{subject_id}\{num}.pth")
+            torch.save(label.clone(), rf"{label_dir}\{subject_id}\{num}.pth")
+            torch.save(event.clone(), rf"{event_dir}\{subject_id}\{num}.pth")
             num += 1

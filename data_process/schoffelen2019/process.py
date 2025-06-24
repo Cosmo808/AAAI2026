@@ -21,7 +21,7 @@ subjects_id = [
 ]
 sample_rate = 120
 sample_t = 5
-seq_length = 5
+seq_length = 1
 
 wav = wav_processor(model_name='facebook/wav2vec2-large-xlsr-53')
 

@@ -55,17 +55,12 @@ class Trainer(object):
             print(f"Loading ann ckpt from {args.ckpt_ann}")
 
         self.negative_pool = None
-        self.candidate_val = []
-        self.candidate_test = []
+        self.candidate = []
         try:
-            for data_batch in self.data_loaders['val']:
-                self.candidate_val.append(data_batch[1])
             for data_batch in self.data_loaders['test']:
-                self.candidate_test.append(data_batch[1])
-            self.candidate_val = torch.cat(self.candidate_val, dim=0).float()
-            self.candidate_test = torch.cat(self.candidate_test, dim=0).float()
-            self.candidate_val = rearrange(self.candidate_val, 'A L C T -> (A L) C T')
-            self.candidate_test = rearrange(self.candidate_test, 'A L C T -> (A L) C T')
+                self.candidate.append(data_batch[1])
+            self.candidate = torch.cat(self.candidate, dim=0).float()
+            self.candidate = rearrange(self.candidate, 'A L C T -> (A L) C T')
         except KeyError:
             pass
 
@@ -112,24 +107,17 @@ class Trainer(object):
 
         else:
             assert y_sas.shape[0] <= 50
-            if self.epoch < self.args.max_epoch:
-                total = y_sas.shape[0] + self.candidate_val.shape[0]
-            else:
-                total = y_sas.shape[0] + self.candidate_test.shape[0]
+            total = y_sas.shape[0] + self.candidate.shape[0]
             C, T = y_sas.shape[1], y_sas.shape[2]
 
             candidate_all = torch.empty((total, C, T), device=self.device, dtype=y_sas.dtype)
             candidate_50 = torch.empty((50, C, T), device=self.device, dtype=y_sas.dtype)
             candidate_all[:y_sas.shape[0]] = y_sas
             candidate_50[:y_sas.shape[0]] = y_sas
-            if self.epoch < self.args.max_epoch:
-                candidate_all[y_sas.shape[0]:].copy_(self.candidate_val, non_blocking=True)
-                rest_50 = torch.randperm(self.candidate_val.shape[0])[:(50 - y_sas.shape[0])]
-                candidate_50[y_sas.shape[0]:].copy_(self.candidate_val[rest_50], non_blocking=True)
-            else:
-                candidate_all[y_sas.shape[0]:].copy_(self.candidate_test, non_blocking=True)
-                rest_50 = torch.randperm(self.candidate_test.shape[0])[:(50 - y_sas.shape[0])]
-                candidate_50[y_sas.shape[0]:].copy_(self.candidate_test[rest_50], non_blocking=True)
+
+            candidate_all[y_sas.shape[0]:].copy_(self.candidate, non_blocking=True)
+            rest_50 = torch.randperm(self.candidate.shape[0])[:(50 - y_sas.shape[0])]
+            candidate_50[y_sas.shape[0]:].copy_(self.candidate[rest_50], non_blocking=True)
 
             ground_truth = torch.arange(pred.shape[0], device=self.device).view(-1, 1)
 
@@ -242,6 +230,7 @@ class Trainer(object):
 
             return losses, spike_losses
         else:
+            if self.epoch % 10 != 9: return 0, 0, 0
             torch.cuda.empty_cache()
             self.ann.eval()
             corrects10_50, corrects10_all = [], []
@@ -267,7 +256,7 @@ class Trainer(object):
             optim_state = self.optimizer.state_dict()
 
             with torch.no_grad():
-                top10_50, top10_all, spike_loss = self.run_one_epoch(mode='val')
+                top10_50, top10_all, spike_loss = self.run_one_epoch(mode='test')
 
                 print(
                     "Epoch {}/{} | training loss: {:.2f}/{:.5f}, top10@50: {:.5f}, top10@All: {:.5f}, LR: {:.2e}, elapsed {:.1f} mins".format(
@@ -293,6 +282,12 @@ class Trainer(object):
         self.snn.load_state_dict(self.best_state_snn)
         with torch.no_grad():
             print("***************************Test results************************")
+            torch.cuda.empty_cache()
+            self.candidate = []
+            for data_batch in self.data_loaders['test']:
+                self.candidate.append(data_batch[1])
+            self.candidate = torch.cat(self.candidate, dim=0).float()
+            self.candidate = rearrange(self.candidate, 'A L C T -> (A L) C T').to(self.device)
             top10_50, top10_all, spike_loss = self.run_one_epoch(mode='test')
             print(
                 "Test Evaluation: top10@50: {:.5f}, top10@All: {:.5f}, spike_loss{:.5f}".format(

@@ -208,7 +208,7 @@ class Trainer(object):
             optim_state = self.optimizer.state_dict()
 
             with torch.no_grad():
-                acc, kappa, f1, cm, spike_loss = self.run_one_epoch(mode='test')
+                acc, kappa, f1, cm, spike_loss = self.run_one_epoch(mode='val')
 
                 print(
                     "Epoch {}/{} | training loss: {:.2f}/{:.5f}, acc: {:.5f}, kappa: {:.5f}, f1: {:.5f}, LR: {:.2e}, elapsed {:.1f} mins".format(

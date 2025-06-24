@@ -12,16 +12,16 @@ from typing import Optional, Any, Union, Callable
 class Model(nn.Module):
     def __init__(self, args: Any):
         super().__init__()
-        down_size = 128
-        self.downsample = nn.Sequential(
-            nn.Conv1d(273, down_size, kernel_size=3, stride=1, padding=1),
-            nn.GroupNorm(num_groups=16, num_channels=down_size),
-        )
+        # down_size = 128
+        # self.downsample = nn.Sequential(
+        #     nn.Conv1d(273, down_size, kernel_size=3, stride=1, padding=1),
+        #     nn.GroupNorm(num_groups=16, num_channels=down_size),
+        # )
 
         self.model_name = args.model
         if args.model == 'simplecnn':
             self.backbone = SimpleConv(
-                in_channels=down_size, out_channels=2 * down_size, num_layers=1,
+                in_channels=273, out_channels=480, num_layers=1,
                 feature_dim=1024, n_subjects=30
             )
         else:
@@ -38,21 +38,21 @@ class Model(nn.Module):
             elif args.model == 'labram':
                 self.backbone = generate_labram()
 
-            self.subject_layer = SubjectLayers(down_size, down_size, 30)
+            self.subject_layer = SubjectLayers(273, 273, 30)
 
             self.final = nn.Sequential(
-                nn.Conv1d(down_size, 2 * down_size, kernel_size=1, stride=1),
+                nn.Conv1d(273, 480, kernel_size=1, stride=1),
                 # nn.BatchNorm1d(2 * 128),
-                nn.GroupNorm(num_groups=16, num_channels=2 * down_size),
+                nn.GroupNorm(num_groups=16, num_channels=480),
                 nn.Dropout(0.5),
                 nn.GELU(),
-                nn.ConvTranspose1d(2 * down_size, 1024, kernel_size=1, stride=1),
+                nn.ConvTranspose1d(480, 1024, kernel_size=1, stride=1),
             )
 
     def forward(self, x, subjects=None):
         B, L, C, T = x.shape   # [bs, 5, 273, 5 * 120 = 600]
         x = rearrange(x, 'B L C T -> (B L) C T')
-        x = self.downsample(x)
+        # x = self.downsample(x)
 
         if self.model_name == 'simplecnn':
             if subjects is None:
