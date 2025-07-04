@@ -4,12 +4,12 @@ import random
 from models.snn import SAS
 from models.utils import *
 
-from data_loader import data_isruc, data_broderick2019, data_brennan2019, data_mumtaz2016, data_mental, \
-    data_tuab, data_tuev, data_bcic2020, data_schoffelen2019, data_gwilliams2022, data_seedvig, data_seedv
-from models import model_isruc, model_broderick2019, model_brennan2019, model_mumtaz2016, model_mental, \
-    model_tuab, model_tuev, model_bcic2020, model_schoffelen2019, model_gwilliams2022, model_seedvig, model_seedv
-from trainers import trainer_isruc, trainer_broderick2019, trainer_brennan2019, trainer_mumtaz2016, trainer_mental, \
-    trainer_tuab, trainer_tuev, trainer_bcic2020, trainer_schoffelen2019, trainer_gwilliams2022, trainer_seedvig, trainer_seedv
+from data_loader import data_isruc, data_broderick2019, data_brennan2019, data_mumtaz2016, data_mental, data_shumi,\
+    data_tuab, data_tuev, data_bcic2020, data_schoffelen2019, data_gwilliams2022, data_seedvig, data_seedv, data_faced
+from models import model_isruc, model_broderick2019, model_brennan2019, model_mumtaz2016, model_mental, model_shumi,\
+    model_tuab, model_tuev, model_bcic2020, model_schoffelen2019, model_gwilliams2022, model_seedvig, model_seedv, model_faced
+from trainers import trainer_isruc, trainer_broderick2019, trainer_brennan2019, trainer_mumtaz2016, trainer_mental, trainer_shumi,\
+    trainer_tuab, trainer_tuev, trainer_bcic2020, trainer_schoffelen2019, trainer_gwilliams2022, trainer_seedvig, trainer_seedv, trainer_faced
 
 
 if __name__ == '__main__':
@@ -29,11 +29,11 @@ if __name__ == '__main__':
     parser.add_argument('--datasets', type=str, default='TUEV',
                         choices=['brennan2019', 'broderick2019', 'schoffelen2019', 'gwilliams2022',
                                  'SEED-VIG',
-                                 'ISRUC', 'TUEV', 'BCIC2020', 'SEED-V',
-                                 'Mumtaz2016', 'MentalArithmetic', 'TUAB'])
+                                 'ISRUC', 'TUEV', 'BCIC2020', 'SEED-V', 'FACED',
+                                 'Mumtaz2016', 'MentalArithmetic', 'TUAB', 'SHU-MI'])
     parser.add_argument('--model', type=str, default='cbramod', choices=['simplecnn', 'cbramod', 'labram'])
     parser.add_argument('--n_negatives', type=int, default=None)
-    parser.add_argument('--n_subjects', type=int, default=None)
+    parser.add_argument('--n_subjects', type=int, default=1)
     parser.add_argument('--n_channels', type=int, default=None)
     parser.add_argument('--n_slice', type=int, default=1)
     parser.add_argument('--sr', type=int, default=None)
@@ -81,6 +81,16 @@ if __name__ == '__main__':
         eeg_model = model_isruc.Model(args)
         snn_model = SAS(args)
         trainer = trainer_isruc
+    elif args.datasets == 'FACED':
+        args.n_classes = 9
+        args.n_channels = 32
+        args.sr = 200
+        args.fps = 1
+        data_loaders = data_faced.LoadDataset(args)
+        data_loaders = data_loaders.get_data_loader()
+        eeg_model = model_faced.Model(args)
+        snn_model = SAS(args)
+        trainer = trainer_faced
     elif args.datasets == 'Mumtaz2016':
         args.n_subjects = 64
         args.n_channels = 19
@@ -101,6 +111,15 @@ if __name__ == '__main__':
         eeg_model = model_mental.Model(args)
         snn_model = SAS(args)
         trainer = trainer_mental
+    elif args.datasets == 'SHU-MI':
+        args.n_channels = 32
+        args.sr = 200
+        args.fps = 5
+        data_loaders = data_shumi.LoadDataset(args)
+        data_loaders = data_loaders.get_data_loader()
+        eeg_model = model_shumi.Model(args)
+        snn_model = SAS(args)
+        trainer = trainer_shumi
     elif args.datasets == 'SEED-VIG':
         args.n_subjects = 1
         args.n_channels = 17

@@ -33,7 +33,7 @@ class Trainer(object):
 
         self.iter = -1
         self.epoch = -1
-        self.best_epoch = -1
+        self.best_epoch = 0
         self.best_state_ann = None
         self.best_state_snn = None
         self.save_dir_snn = None

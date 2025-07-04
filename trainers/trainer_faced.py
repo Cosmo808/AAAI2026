@@ -85,7 +85,7 @@ class Trainer(object):
             return truth, pred
 
     def snn_one_batch(self, x, y, events, training=False, slice=False):
-        # x: [B, 1, 62, 200]
+        # x: [B, 4, 32, 6000]
         # expect_idxes: [B, L]
         B, L, C, T = x.shape
 
@@ -183,7 +183,7 @@ class Trainer(object):
             for x, y, events, subjects in tqdm(self.data_loaders[mode]):
                 self.iter += 1
                 y = y.to(self.device)
-
+                
                 spike_loss = self.snn_one_batch(x, y, events, training=False)
                 truth, pred = self.ann_one_batch(x, y, events, training=False)
                 truths += truth
@@ -208,7 +208,7 @@ class Trainer(object):
             optim_state = self.optimizer.state_dict()
 
             with torch.no_grad():
-                acc, kappa, f1, cm, spike_loss = self.run_one_epoch(mode='test')
+                acc, kappa, f1, cm, spike_loss = self.run_one_epoch(mode='val')
 
                 print(
                     "Epoch {}/{} | training loss: {:.2f}/{:.5f}, acc: {:.5f}, kappa: {:.5f}, f1: {:.5f}, LR: {:.2e}, elapsed {:.1f} mins".format(
@@ -242,7 +242,7 @@ class Trainer(object):
                     acc, kappa, f1, spike_loss)
             )
             # print(cm)
-            self.epoch = self.epoch + 1
+            self.epoch += 1
             self.save_dict((acc, kappa, f1, spike_loss))
 
     def save_dict(self, values):
@@ -269,18 +269,18 @@ class Trainer(object):
 
     def MCMC_init(self, mode):
         for x, y, events, subjects in self.data_loaders['train']:
-            B, L, C, T = x.shape  # B, 1, 62, 200
+            B, L, C, T = x.shape  # B, 4, 32, 6000
             break
-        duration = T / self.args.sr  # 1 seconds
-        self.n_frames = int(duration * self.args.fps)  # 10 frames
-        self.expect_spike_idxes = torch.ones(size=[len(self.data_loaders['val']), self.args.bs, L, self.args.n_slice]) * (self.n_frames - 1)
+        duration = T / self.args.sr  # 30 seconds
+        self.n_frames = int(duration * self.args.fps)  # 30 frames
+        self.expect_spike_idxes = torch.ones(size=[len(self.data_loaders['train']), self.args.bs, L, self.args.n_slice]) * (self.n_frames - 1)
         # self.expect_spike_idxes = torch.stack([
         #     torch.sort(torch.randperm(self.n_frames)[:self.args.n_slice])[0]
-        #     for _ in range(len(self.data_loaders['val']) * self.args.bs * L)
-        # ]).view(len(self.data_loaders['val']), self.args.bs, L, self.args.n_slice)
+        #     for _ in range(len(self.data_loaders['train']) * self.args.bs * L)
+        # ]).view(len(self.data_loaders['train']), self.args.bs, L, self.args.n_slice)
         self.spike_idxes = torch.zeros_like(self.expect_spike_idxes) - 1
         self.spike_idxes[:, :, :, 0] = self.n_frames - 1
-        self.downstream_metric = torch.zeros(size=[len(self.data_loaders['val']), self.args.bs], device=self.device)
+        self.downstream_metric = torch.zeros(size=[len(self.data_loaders['train']), self.args.bs], device=self.device)
         if mode == 'min':
             self.downstream_metric += np.inf
 
@@ -293,7 +293,7 @@ class Trainer(object):
             elif mode == 'max':
                 p = metric[b] / self.downstream_metric[self.iter, b]
 
-            if u < p:  # accept
+            if p > 1:  # accept
                 accept.append(b)
                 self.expect_spike_idxes[self.iter, b] = self.spike_idxes[self.iter, b]
         # print(f"Accept {len(accept)}/{self.args.bs} batches for new slicing labels for iter {self.iter} ")

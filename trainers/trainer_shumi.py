@@ -7,7 +7,8 @@ from timeit import default_timer as timer
 import numpy as np
 import copy
 import os
-from sklearn.metrics import balanced_accuracy_score, f1_score, confusion_matrix, cohen_kappa_score
+from sklearn.metrics import balanced_accuracy_score, f1_score, confusion_matrix, cohen_kappa_score, roc_auc_score, \
+    precision_recall_curve, auc, r2_score, mean_squared_error
 from models.losses import *
 from einops import rearrange
 from spikingjelly.activation_based import functional
@@ -26,7 +27,7 @@ class Trainer(object):
         self.args = args
 
         self.data_loaders = data_loaders
-        self.criterion_ann = CrossEntropyLoss(label_smoothing=self.args.label_smoothing).to(self.device)
+        self.criterion_ann = BCEWithLogitsLoss().cuda()
         self.criterion_snn = MembraneLoss()
 
         self.iter = -1
@@ -58,7 +59,7 @@ class Trainer(object):
         pred = self.ann(x_sas.to(self.device))
 
         if training:
-            loss = self.criterion_ann(pred.transpose(1, 2), y)
+            loss = self.criterion_ann(pred.flatten(), y.flatten())
             self.optimizer.zero_grad()
             loss.backward()
             if self.args.grad_clip > 0:
@@ -67,9 +68,7 @@ class Trainer(object):
             assert self.scheduler[0].name == 'ann'
             self.scheduler[0].step()
 
-            # accuracy_per_sample = F.softmax(pred, dim=-1).max(dim=-1)[0].mean(dim=1).detach().cpu()  # size: [B]
-            accuracy_per_sample = F.softmax(pred.detach(), dim=-1)
-            accuracy_per_sample = torch.gather(accuracy_per_sample, dim=-1, index=y.unsqueeze(-1)).squeeze(-1).mean(dim=1)  # size: [B]
+            accuracy_per_sample = torch.gt(torch.sigmoid(pred).squeeze(), 0.5).sum(dim=1)
             if self.epoch > 0:
                 self.MCMC_step(accuracy_per_sample, mode='max')
             self.downstream_metric[self.iter] = accuracy_per_sample
@@ -77,16 +76,14 @@ class Trainer(object):
             return loss.detach().cpu().item()
 
         else:
-            pred_y = torch.max(pred, dim=-1)[1]
-            truth = y.cpu().squeeze().numpy().tolist()
-            pred = pred_y.cpu().squeeze().numpy().tolist()
-            truth = [item for sublist in truth for item in sublist] if isinstance(truth[0], (list, tuple)) else truth
-            pred = [item for sublist in pred for item in sublist] if isinstance(pred[0], (list, tuple)) else pred
-            return truth, pred
+            score_y = torch.sigmoid(pred)
+            pred_y = torch.gt(score_y, 0.5).long()
+            truth = y.long().cpu().flatten().numpy().tolist()
+            pred = pred_y.cpu().flatten().numpy().tolist()
+            score = score_y.cpu().flatten().numpy().tolist()
+            return truth, pred, score
 
     def snn_one_batch(self, x, y, events, training=False, slice=False):
-        # x: [B, 1, 62, 200]
-        # expect_idxes: [B, L]
         B, L, C, T = x.shape
 
         if slice:
@@ -105,8 +102,8 @@ class Trainer(object):
                 ))
             x_sas = torch.stack(x_sas).float().to(self.device)  # [B, l, C, T]
             if y.shape[1] != x_sas.shape[1]:
-                y = F.interpolate(y.unsqueeze(1).float(), size=x_sas.shape[1], mode='nearest').squeeze(1)
-            return x_sas, y.to(torch.int64)
+                y = F.interpolate(y.unsqueeze(1).float(), size=x_sas.shape[1], mode='nearest').squeeze(1).to(torch.int64)
+            return x_sas, y
 
         events = rearrange(events, 'B L t P C -> (B L) t P C', B=B, L=L)
         spike_idxes = self.snn(events.to(self.device))
@@ -180,27 +177,31 @@ class Trainer(object):
             self.ann.eval()
             truths = []
             preds = []
+            scores = []
             for x, y, events, subjects in tqdm(self.data_loaders[mode]):
                 self.iter += 1
                 y = y.to(self.device)
 
                 spike_loss = self.snn_one_batch(x, y, events, training=False)
-                truth, pred = self.ann_one_batch(x, y, events, training=False)
+                truth, pred, score = self.ann_one_batch(x, y, events, training=False)
                 truths += truth
                 preds += pred
+                scores += score
             truths = np.array(truths)
             preds = np.array(preds)
+            scores = np.array(scores)
             acc = balanced_accuracy_score(truths, preds)
-            f1 = f1_score(truths, preds, average='weighted')
-            kappa = cohen_kappa_score(truths, preds)
+            roc_auc = roc_auc_score(truths, scores)
+            precision, recall, thresholds = precision_recall_curve(truths, scores, pos_label=1)
+            pr_auc = auc(recall, precision)
             cm = confusion_matrix(truths, preds)
-            return acc, kappa, f1, cm, spike_loss
+            return acc, pr_auc, roc_auc, cm, spike_loss
 
     def train(self):
         start_time = timer()
-        f1_best = 0
-        kappa_best = 0
         acc_best = 0
+        roc_auc_best = 0
+        pr_auc_best = 0
         spike_best = np.inf
         for epoch in range(self.args.max_epoch):
             self.epoch = epoch
@@ -208,46 +209,46 @@ class Trainer(object):
             optim_state = self.optimizer.state_dict()
 
             with torch.no_grad():
-                acc, kappa, f1, cm, spike_loss = self.run_one_epoch(mode='test')
+                acc, pr_auc, roc_auc, cm, spike_loss = self.run_one_epoch(mode='val')
 
                 print(
-                    "Epoch {}/{} | training loss: {:.2f}/{:.5f}, acc: {:.5f}, kappa: {:.5f}, f1: {:.5f}, LR: {:.2e}, elapsed {:.1f} mins".format(
-                        epoch, self.args.max_epoch, np.mean(losses), np.mean(spike_losses), acc, kappa, f1,
+                    "Epoch {}/{} | training loss: {:.2f}/{:.5f}, acc: {:.5f}, pr_auc: {:.5f}, roc_auc: {:.5f}, LR: {:.2e}, elapsed {:.1f} mins".format(
+                        epoch, self.args.max_epoch, np.mean(losses), np.mean(spike_losses), acc, pr_auc, roc_auc,
                         optim_state['param_groups'][0]['lr'], (timer() - start_time) / 60)
                 )
                 # print(cm)
-                if kappa > kappa_best:
+                if acc > acc_best:
                     print("val metric increasing....saving weights !! ")
                     print(
-                        "Val Evaluation: acc: {:.5f}, kappa: {:.5f}, f1: {:.5f}, spike_loss: {:.3f}".format(
-                            acc, kappa, f1, spike_loss)
+                        "Val Evaluation: acc: {:.5f}, pr_auc: {:.5f}, roc_auc: {:.5f}, spike_loss: {:.3f}".format(
+                            acc, pr_auc, roc_auc, spike_loss)
                     )
                     self.best_epoch = epoch
                     acc_best = acc
-                    kappa_best = kappa
-                    f1_best = f1
+                    pr_auc_best = pr_auc
+                    roc_auc_best = roc_auc
                     spike_best = spike_loss
                     self.best_state_ann = copy.deepcopy(self.ann.state_dict())
                     self.best_state_snn = copy.deepcopy(self.snn.state_dict())
-                    self.save_dict((acc, kappa, f1, spike_loss))
+                    self.save_dict((acc, pr_auc, roc_auc, spike_loss))
                 print(f"Epoch {epoch}/{self.args.max_epoch} fnished...\n\n")
 
         self.ann.load_state_dict(self.best_state_ann)
         self.snn.load_state_dict(self.best_state_snn)
         with torch.no_grad():
             print("***************************Test results************************")
-            acc, kappa, f1, cm, spike_loss = self.run_one_epoch(mode='test')
+            acc, pr_auc, roc_auc, cm, spike_loss = self.run_one_epoch(mode='test')
             print(
-                "Test Evaluation: acc: {:.5f}, kappa: {:.5f}, f1: {:.5f}, spike_loss{:.5f}".format(
-                    acc, kappa, f1, spike_loss)
+                "Test Evaluation: acc: {:.5f}, pr_auc: {:.5f}, roc_auc: {:.5f}, spike_loss: {:.5f}".format(
+                    acc, pr_auc, roc_auc, spike_loss)
             )
             # print(cm)
-            self.epoch = self.epoch + 1
-            self.save_dict((acc, kappa, f1, spike_loss))
+            self.epoch = 1
+            self.save_dict((acc, pr_auc, roc_auc, spike_loss))
 
     def save_dict(self, values):
-        # if self.epoch == 0:
-        #     return
+        if self.epoch == 0:
+            return
 
         if self.save_dir_ann is not None:
             if os.path.exists(self.save_dir_ann):
@@ -256,8 +257,8 @@ class Trainer(object):
             if os.path.exists(self.save_dir_snn):
                 os.remove(self.save_dir_snn)
 
-        acc, kappa, f1, spike_loss = values
-        self.save_dir_ann = self.args.save_dir + r"\ann_epoch{}_acc_{:.5f}_kappa_{:.5f}_f1_{:.5f}.pth".format(self.best_epoch, acc, kappa, f1)
+        acc, pr_auc, roc_auc, spike_loss = values
+        self.save_dir_ann = self.args.save_dir + r"\ann_epoch{}_acc_{:.5f}_pr_{:.5f}_roc_{:.5f}.pth".format(self.best_epoch, acc, pr_auc, roc_auc)
         self.save_dir_snn = self.args.save_dir + r"\snn_epoch{}_spike_{:.5f}.pth".format(self.best_epoch, spike_loss)
         os.makedirs(os.path.dirname(self.save_dir_ann), exist_ok=True)
         os.makedirs(os.path.dirname(self.save_dir_snn), exist_ok=True)
@@ -269,18 +270,18 @@ class Trainer(object):
 
     def MCMC_init(self, mode):
         for x, y, events, subjects in self.data_loaders['train']:
-            B, L, C, T = x.shape  # B, 1, 62, 200
+            B, L, C, T = x.shape  # B, 5, 32, 800
             break
-        duration = T / self.args.sr  # 1 seconds
-        self.n_frames = int(duration * self.args.fps)  # 10 frames
-        self.expect_spike_idxes = torch.ones(size=[len(self.data_loaders['val']), self.args.bs, L, self.args.n_slice]) * (self.n_frames - 1)
+        duration = T / self.args.sr  # 4 seconds
+        self.n_frames = int(duration * self.args.fps)  # 20 frames
+        self.expect_spike_idxes = torch.ones(size=[len(self.data_loaders['train']), self.args.bs, L, self.args.n_slice]) * (self.n_frames - 1)
         # self.expect_spike_idxes = torch.stack([
         #     torch.sort(torch.randperm(self.n_frames)[:self.args.n_slice])[0]
-        #     for _ in range(len(self.data_loaders['val']) * self.args.bs * L)
-        # ]).view(len(self.data_loaders['val']), self.args.bs, L, self.args.n_slice)
+        #     for _ in range(len(self.data_loaders['train']) * self.args.bs * L)
+        # ]).view(len(self.data_loaders['train']), self.args.bs, L, self.args.n_slice)
         self.spike_idxes = torch.zeros_like(self.expect_spike_idxes) - 1
         self.spike_idxes[:, :, :, 0] = self.n_frames - 1
-        self.downstream_metric = torch.zeros(size=[len(self.data_loaders['val']), self.args.bs], device=self.device)
+        self.downstream_metric = torch.zeros(size=[len(self.data_loaders['train']), self.args.bs], device=self.device)
         if mode == 'min':
             self.downstream_metric += np.inf
 
