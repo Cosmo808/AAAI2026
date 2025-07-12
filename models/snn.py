@@ -72,8 +72,8 @@ class SNN(nn.Module):
             layer.Flatten(step_mode='m'),
         )
 
-        # self.rnn = nn.GRU(input_size=flatten_size, hidden_size=flatten_size // 2,
-        #                   bidirectional=True, batch_first=False)
+        self.rnn = nn.GRU(input_size=flatten_size, hidden_size=flatten_size // 2,
+                          bidirectional=True, batch_first=False)
 
         self.linear = nn.Sequential(
             layer.Linear(flatten_size, 1, bias=False, step_mode='m')
@@ -83,7 +83,7 @@ class SNN(nn.Module):
     def forward(self, x, subjects):
         x = self.subject_layer.forward(x, subjects)
         feature_map = self.encoder(x)
-        # feature_map, _ = self.rnn(feature_map)
+        feature_map, _ = self.rnn(feature_map)
         I = self.linear(feature_map)
         if self.node.step_mode == 'm':
             self.I = I

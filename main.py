@@ -5,11 +5,11 @@ from models.snn import SAS
 from models.utils import *
 
 from data_loader import data_isruc, data_broderick2019, data_brennan2019, data_mumtaz2016, data_mental, data_shumi,\
-    data_tuab, data_tuev, data_bcic2020, data_schoffelen2019, data_gwilliams2022, data_seedvig, data_seedv, data_faced
+    data_tuab, data_tuev, data_bcic2020, data_schoffelen2019, data_gwilliams2022, data_seedvig, data_seedv, data_faced, data_physio
 from models import model_isruc, model_broderick2019, model_brennan2019, model_mumtaz2016, model_mental, model_shumi,\
-    model_tuab, model_tuev, model_bcic2020, model_schoffelen2019, model_gwilliams2022, model_seedvig, model_seedv, model_faced
+    model_tuab, model_tuev, model_bcic2020, model_schoffelen2019, model_gwilliams2022, model_seedvig, model_seedv, model_faced, model_physio
 from trainers import trainer_isruc, trainer_broderick2019, trainer_brennan2019, trainer_mumtaz2016, trainer_mental, trainer_shumi,\
-    trainer_tuab, trainer_tuev, trainer_bcic2020, trainer_schoffelen2019, trainer_gwilliams2022, trainer_seedvig, trainer_seedv, trainer_faced
+    trainer_tuab, trainer_tuev, trainer_bcic2020, trainer_schoffelen2019, trainer_gwilliams2022, trainer_seedvig, trainer_seedv, trainer_faced, trainer_physio
 
 
 if __name__ == '__main__':
@@ -29,7 +29,7 @@ if __name__ == '__main__':
     parser.add_argument('--datasets', type=str, default='TUEV',
                         choices=['brennan2019', 'broderick2019', 'schoffelen2019', 'gwilliams2022',
                                  'SEED-VIG',
-                                 'ISRUC', 'TUEV', 'BCIC2020', 'SEED-V', 'FACED',
+                                 'ISRUC', 'TUEV', 'BCIC2020', 'SEED-V', 'FACED', 'PhysioNet-MI',
                                  'Mumtaz2016', 'MentalArithmetic', 'TUAB', 'SHU-MI'])
     parser.add_argument('--model', type=str, default='cbramod', choices=['simplecnn', 'cbramod', 'labram'])
     parser.add_argument('--n_negatives', type=int, default=None)
@@ -91,6 +91,16 @@ if __name__ == '__main__':
         eeg_model = model_faced.Model(args)
         snn_model = SAS(args)
         trainer = trainer_faced
+    elif args.datasets == 'PhysioNet-MI':
+        args.n_classes = 4
+        args.n_channels = 64
+        args.sr = 200
+        args.fps = 5
+        data_loaders = data_physio.LoadDataset(args)
+        data_loaders = data_loaders.get_data_loader()
+        eeg_model = model_physio.Model(args)
+        snn_model = SAS(args)
+        trainer = trainer_physio
     elif args.datasets == 'Mumtaz2016':
         args.n_subjects = 64
         args.n_channels = 19

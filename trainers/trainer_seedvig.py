@@ -50,7 +50,7 @@ class Trainer(object):
             print(f"Loading snn ckpt from {args.ckpt_snn}")
         if args.ckpt_ann is not None:
             self.best_state_ann = torch.load(args.ckpt_ann, map_location=self.device)
-            self.ann.load_state_dict(self.best_state_ann)
+            self.ann.load_state_dict(self.best_state_ann, strict=False)
             print(f"Loading ann ckpt from {args.ckpt_ann}")
 
     def ann_one_batch(self, x, y, events, training):
@@ -205,7 +205,7 @@ class Trainer(object):
             optim_state = self.optimizer.state_dict()
 
             with torch.no_grad():
-                corrcoef, r2, rmse, spike_loss = self.run_one_epoch(mode='val')
+                corrcoef, r2, rmse, spike_loss = self.run_one_epoch(mode='test')
 
                 print(
                     "Epoch {}/{} | training loss: {:.5f}/{:.3f}, cor: {:.5f}, r2: {:.5f}, rmse: {:.5f}, LR: {:.2e}, elapsed {:.1f} mins".format(
@@ -228,7 +228,7 @@ class Trainer(object):
                     self.save_dict((corrcoef, r2, rmse, spike_loss))
                 print(f"Epoch {epoch}/{self.args.max_epoch} fnished...\n\n")
 
-        self.ann.load_state_dict(self.best_state_ann)
+        self.ann.load_state_dict(self.best_state_ann, strict=False)
         self.snn.load_state_dict(self.best_state_snn)
         with torch.no_grad():
             print("***************************Test results************************")

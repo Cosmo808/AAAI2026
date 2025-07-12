@@ -76,7 +76,7 @@ class Trainer(object):
             return loss.detach().cpu().item()
 
         else:
-            score_y = torch.sigmoid(pred)
+            score_y = torch.sigmoid(pred.detach())
             pred_y = torch.gt(score_y, 0.5).long()
             truth = y.long().cpu().flatten().numpy().tolist()
             pred = pred_y.cpu().flatten().numpy().tolist()
@@ -272,7 +272,6 @@ class Trainer(object):
         for x, y, events, subjects in self.data_loaders['train']:
             B, L, C, T = x.shape  # B, 5, 20, 600
             break
-        pdb.set_trace()
         duration = T / self.args.sr  # 3 seconds
         self.n_frames = int(duration * self.args.fps)  # 30 frames
         # expect_spike_idxes = torch.ones(size=[len(self.data_loaders['train']), self.args.bs, L]) * (self.n_frames - 1)

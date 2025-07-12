@@ -49,7 +49,7 @@ class Trainer(object):
             print(f"Loading snn ckpt from {args.ckpt_snn}")
         if args.ckpt_ann is not None:
             self.best_state_ann = torch.load(args.ckpt_ann, map_location=self.device)
-            self.ann.load_state_dict(self.best_state_ann)
+            self.ann.load_state_dict(self.best_state_ann, strict=False)
             print(f"Loading ann ckpt from {args.ckpt_ann}")
 
     def ann_one_batch(self, x, y, events, training):

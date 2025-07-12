@@ -49,7 +49,7 @@ class Trainer(object):
             print(f"Loading snn ckpt from {args.ckpt_snn}")
         if args.ckpt_ann is not None:
             self.best_state_ann = torch.load(args.ckpt_ann, map_location=self.device)
-            self.ann.load_state_dict(self.best_state_ann)
+            self.ann.load_state_dict(self.best_state_ann, strict=False)
             print(f"Loading ann ckpt from {args.ckpt_ann}")
 
     def ann_one_batch(self, x, y, events, training):
@@ -85,7 +85,7 @@ class Trainer(object):
             return truth, pred
 
     def snn_one_batch(self, x, y, events, training=False, slice=False):
-        # x: [B, 1, 62, 200]
+        # x: [B, 4, 32, 6000]
         # expect_idxes: [B, L]
         B, L, C, T = x.shape
 
@@ -183,7 +183,7 @@ class Trainer(object):
             for x, y, events, subjects in tqdm(self.data_loaders[mode]):
                 self.iter += 1
                 y = y.to(self.device)
-
+                
                 spike_loss = self.snn_one_batch(x, y, events, training=False)
                 truth, pred = self.ann_one_batch(x, y, events, training=False)
                 truths += truth
@@ -232,7 +232,7 @@ class Trainer(object):
                     self.save_dict((acc, kappa, f1, spike_loss))
                 print(f"Epoch {epoch}/{self.args.max_epoch} fnished...\n\n")
 
-        self.ann.load_state_dict(self.best_state_ann)
+        self.ann.load_state_dict(self.best_state_ann, strict=False)
         self.snn.load_state_dict(self.best_state_snn)
         with torch.no_grad():
             print("***************************Test results************************")
@@ -242,7 +242,7 @@ class Trainer(object):
                     acc, kappa, f1, spike_loss)
             )
             # print(cm)
-            self.epoch = self.epoch + 1
+            self.epoch += 1
             self.save_dict((acc, kappa, f1, spike_loss))
 
     def save_dict(self, values):
@@ -269,18 +269,18 @@ class Trainer(object):
 
     def MCMC_init(self, mode):
         for x, y, events, subjects in self.data_loaders['train']:
-            B, L, C, T = x.shape  # B, 1, 62, 200
+            B, L, C, T = x.shape  # B, 5, 64, 800
             break
-        duration = T / self.args.sr  # 1 seconds
-        self.n_frames = int(duration * self.args.fps)  # 10 frames
-        self.expect_spike_idxes = torch.ones(size=[len(self.data_loaders['val']), self.args.bs, L, self.args.n_slice]) * (self.n_frames - 1)
+        duration = T / self.args.sr  # 4 seconds
+        self.n_frames = int(duration * self.args.fps)  # 20 frames
+        self.expect_spike_idxes = torch.ones(size=[len(self.data_loaders['train']), self.args.bs, L, self.args.n_slice]) * (self.n_frames - 1)
         # self.expect_spike_idxes = torch.stack([
         #     torch.sort(torch.randperm(self.n_frames)[:self.args.n_slice])[0]
-        #     for _ in range(len(self.data_loaders['val']) * self.args.bs * L)
-        # ]).view(len(self.data_loaders['val']), self.args.bs, L, self.args.n_slice)
+        #     for _ in range(len(self.data_loaders['train']) * self.args.bs * L)
+        # ]).view(len(self.data_loaders['train']), self.args.bs, L, self.args.n_slice)
         self.spike_idxes = torch.zeros_like(self.expect_spike_idxes) - 1
         self.spike_idxes[:, :, :, 0] = self.n_frames - 1
-        self.downstream_metric = torch.zeros(size=[len(self.data_loaders['val']), self.args.bs], device=self.device)
+        self.downstream_metric = torch.zeros(size=[len(self.data_loaders['train']), self.args.bs], device=self.device)
         if mode == 'min':
             self.downstream_metric += np.inf
 

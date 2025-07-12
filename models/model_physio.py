@@ -1,5 +1,3 @@
-import pdb
-
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -21,26 +19,26 @@ class Model(nn.Module):
         self.backbone.proj_out = nn.Identity()
 
         self.head = nn.Sequential(
-            nn.Linear(17*8*200, 8*200),
+            nn.Linear(64*4*200, 4*200),
             nn.ELU(),
-            nn.Dropout(0.1),
-            nn.Linear(8*200, 200),
+            nn.Dropout(0.5),
+            nn.Linear(4*200, 200),
             nn.ELU(),
-            nn.Dropout(0.1),
+            nn.Dropout(0.5),
         )
 
-        # encoder_layer = nn.TransformerEncoderLayer(
-        #     d_model=200, nhead=4, dim_feedforward=2048, batch_first=True, activation=F.gelu, norm_first=True
-        # )
-        # self.sequence_encoder = nn.TransformerEncoder(encoder_layer, num_layers=1, enable_nested_tensor=False)
-        self.classifier = nn.Linear(200, 1)
+        encoder_layer = nn.TransformerEncoderLayer(
+            d_model=200, nhead=4, dim_feedforward=2048, batch_first=True, activation=F.gelu, norm_first=True
+        )
+        self.sequence_encoder = nn.TransformerEncoder(encoder_layer, num_layers=1, enable_nested_tensor=False)
+        self.classifier = nn.Linear(200, args.n_classes)
 
     def forward(self, x):
-        bz, seq_len, ch_num, patch_size = x.shape  # [bs, 5, 17, 1600]
-        x = x.contiguous().view(bz * seq_len, ch_num, 8, 200)
+        bz, seq_len, ch_num, patch_size = x.shape  # [bs, 5, 64, 800]
+        x = x.contiguous().view(bz * seq_len, ch_num, 4, 200)
         epoch_features = self.backbone(x)
-        epoch_features = epoch_features.contiguous().view(bz, seq_len, ch_num * 8 * 200)
+        epoch_features = epoch_features.contiguous().view(bz, seq_len, ch_num * 4 * 200)
         epoch_features = self.head(epoch_features)
-        # seq_features = self.sequence_encoder(epoch_features)
+        # epoch_features = self.sequence_encoder(epoch_features)
         out = self.classifier(epoch_features)
         return out
