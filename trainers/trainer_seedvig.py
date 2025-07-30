@@ -53,13 +53,13 @@ class Trainer(object):
             self.ann.load_state_dict(self.best_state_ann, strict=False)
             print(f"Loading ann ckpt from {args.ckpt_ann}")
 
-    def ann_one_batch(self, x, y, events, training):
+    def ann_one_batch(self, x, y, events, subjects, training):
         with torch.no_grad():
-            x_sas, y = self.snn_one_batch(x, y, events, slice=True)
-        pred = self.ann(x_sas.to(self.device))
+            x_sas, y_sas = self.snn_one_batch(x, y, events, subjects, slice=True)
+        pred = self.ann(x_sas)
 
         if training:
-            loss = self.criterion_ann(pred.flatten(), y.flatten())
+            loss = self.criterion_ann(pred.flatten(), y_sas.flatten())
             self.optimizer.zero_grad()
             loss.backward()
             if self.args.grad_clip > 0:
@@ -68,7 +68,7 @@ class Trainer(object):
             assert self.scheduler[0].name == 'ann'
             self.scheduler[0].step()
 
-            r_per_sample = torch.tensor([r2_score(pred[i].flatten().detach().cpu(), y[i].cpu()) for i in range(pred.shape[0])])
+            r_per_sample = torch.tensor([r2_score(pred[i].flatten().detach().cpu(), y_sas[i].cpu()) for i in range(pred.shape[0])])
             if self.epoch > 0:
                 self.MCMC_step(r_per_sample, mode='max')
             self.downstream_metric[self.iter] = r_per_sample
@@ -76,11 +76,11 @@ class Trainer(object):
             return loss.detach().cpu().item()
 
         else:
-            truth = y.flatten().cpu().squeeze().numpy().tolist()
-            pred = pred.flatten().cpu().squeeze().numpy().tolist()
+            truth = y_sas.flatten().cpu().squeeze().numpy().tolist()
+            pred = pred.detach().flatten().cpu().squeeze().numpy().tolist()
             return truth, pred
 
-    def snn_one_batch(self, x, y, events, training=False, slice=False):
+    def snn_one_batch(self, x, y, events, subject, training=False, slice=False):
         B, L, C, T = x.shape
 
         if slice:
@@ -160,13 +160,13 @@ class Trainer(object):
                 if self.args.frozen_snn:
                     spike_losses.append(0)
                 else:
-                    spike_loss = self.snn_one_batch(x, y, events, training=True)
+                    spike_loss = self.snn_one_batch(x, y, events, subjects, training=True)
                     spike_losses.append(spike_loss)
 
                 if self.args.frozen_ann:
                     losses.append(0)
                 else:
-                    loss = self.ann_one_batch(x, y, events, training=True)
+                    loss = self.ann_one_batch(x, y, events, subjects, training=True)
                     losses.append(loss)
 
             return losses, spike_losses
@@ -178,8 +178,8 @@ class Trainer(object):
                 self.iter += 1
                 y = y.to(self.device)
 
-                spike_loss = self.snn_one_batch(x, y, events, training=False)
-                truth, pred = self.ann_one_batch(x, y, events, training=False)
+                spike_loss = self.snn_one_batch(x, y, events, subjects, training=False)
+                truth, pred = self.ann_one_batch(x, y, events, subjects, training=False)
                 truths += truth
                 preds += pred
 
@@ -205,7 +205,7 @@ class Trainer(object):
             optim_state = self.optimizer.state_dict()
 
             with torch.no_grad():
-                corrcoef, r2, rmse, spike_loss = self.run_one_epoch(mode='test')
+                corrcoef, r2, rmse, spike_loss = self.run_one_epoch(mode='val')
 
                 print(
                     "Epoch {}/{} | training loss: {:.5f}/{:.3f}, cor: {:.5f}, r2: {:.5f}, rmse: {:.5f}, LR: {:.2e}, elapsed {:.1f} mins".format(
@@ -275,7 +275,7 @@ class Trainer(object):
         ]).view(len(self.data_loaders['train']), self.args.bs, L, self.args.n_slice)
         self.spike_idxes = torch.zeros_like(self.expect_spike_idxes) - 1
         self.spike_idxes[:, :, :, 0] = self.n_frames - 1
-        self.downstream_metric = torch.zeros(size=[len(self.data_loaders['train']), self.args.bs], device=self.device)
+        self.downstream_metric = torch.zeros(size=[len(self.data_loaders['train']), self.args.bs], device=self.device) - 10
         if mode == 'min':
             self.downstream_metric += np.inf
 
