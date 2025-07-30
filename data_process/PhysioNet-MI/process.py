@@ -6,7 +6,7 @@ from tqdm import tqdm
 
 tasks = ['04', '06', '08', '10', '12', '14'] # select the data for motor imagery
 
-root_dir = r'E:\NIPS2026\datasets\PhysioNet-MI\files\eegmmidb\1.0.0'
+root_dir = r'yourpath\datasets\PhysioNet-MI\files\eegmmidb\1.0.0'
 files = [file for file in os.listdir(root_dir)]
 files = sorted(files)
 
@@ -40,9 +40,9 @@ param.sr = 200
 b2e = Brain2Event(param)
 
 for files_key in files_dict.keys():
-    seq_dir = rf'E:\NIPS2026\datasets\PhysioNet-MI\{files_key}\seq'
-    label_dir = rf'E:\NIPS2026\datasets\PhysioNet-MI\{files_key}\labels'
-    event_dir = rf'E:\NIPS2026\datasets\PhysioNet-MI\{files_key}\events'
+    seq_dir = rf'yourpath\datasets\PhysioNet-MI\{files_key}\seq'
+    label_dir = rf'yourpath\datasets\PhysioNet-MI\{files_key}\labels'
+    event_dir = rf'yourpath\datasets\PhysioNet-MI\{files_key}\events'
     for file in tqdm(files_dict[files_key]):
         for task in tasks:
             try:

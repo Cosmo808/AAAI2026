@@ -6,7 +6,7 @@ from models.utils import Brain2Event
 from tqdm import tqdm
 
 
-root_dir = r'E:\NIPS2026\datasets\SHU-MI\mat'
+root_dir = r'yourpath\datasets\SHU-MI\mat'
 files = [file for file in os.listdir(root_dir)]
 files = sorted(files)
 # print(files)
@@ -32,9 +32,9 @@ param.sr = 200
 b2e = Brain2Event(param)
 
 for files_key in files_dict.keys():
-    seq_dir = rf'E:\NIPS2026\datasets\SHU-MI\{files_key}\seq'
-    label_dir = rf'E:\NIPS2026\datasets\SHU-MI\{files_key}\labels'
-    event_dir = rf'E:\NIPS2026\datasets\SHU-MI\{files_key}\events'
+    seq_dir = rf'yourpath\datasets\SHU-MI\{files_key}\seq'
+    label_dir = rf'yourpath\datasets\SHU-MI\{files_key}\labels'
+    event_dir = rf'yourpath\datasets\SHU-MI\{files_key}\events'
     for file in tqdm(files_dict[files_key]):
         data = scipy.io.loadmat(os.path.join(root_dir, file))
         eeg = data['data']

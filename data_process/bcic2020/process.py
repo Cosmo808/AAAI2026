@@ -8,9 +8,9 @@ import numpy as np
 import pandas as pd
 from tqdm import tqdm
 
-train_dir = r'E:\NIPS2026\datasets\BCIC2020\Training set'
-val_dir = r'E:\NIPS2026\datasets\BCIC2020\Validation set'
-test_dir = r'E:\NIPS2026\datasets\BCIC2020\Test set'
+train_dir = r'yourpath\datasets\BCIC2020\Training set'
+val_dir = r'yourpath\datasets\BCIC2020\Validation set'
+test_dir = r'yourpath\datasets\BCIC2020\Test set'
 
 files_dict = {
     'train': sorted([file for file in os.listdir(train_dir)]),
@@ -35,9 +35,9 @@ param.sr = 200
 b2e = Brain2Event(param)
 seq_length = 5
 
-seq_dir = r'E:\NIPS2026\datasets\BCIC2020\train\seq'
-label_dir = r'E:\NIPS2026\datasets\BCIC2020\train\labels'
-event_dir = r'E:\NIPS2026\datasets\BCIC2020\train\events'
+seq_dir = r'yourpath\datasets\BCIC2020\train\seq'
+label_dir = r'yourpath\datasets\BCIC2020\train\labels'
+event_dir = r'yourpath\datasets\BCIC2020\train\events'
 for file in tqdm(files_dict['train']):
     subject_id = file.split('.')[0]
     os.makedirs(rf"{seq_dir}\{subject_id}", exist_ok=True)
@@ -59,9 +59,9 @@ for file in tqdm(files_dict['train']):
         torch.save(label_seq, rf"{label_dir}\{subject_id}\{i}.pth")
         torch.save(event_seq, rf"{event_dir}\{subject_id}\{i}.pth")
 
-seq_dir = r'E:\NIPS2026\datasets\BCIC2020\val\seq'
-label_dir = r'E:\NIPS2026\datasets\BCIC2020\val\labels'
-event_dir = r'E:\NIPS2026\datasets\BCIC2020\val\events'
+seq_dir = r'yourpath\datasets\BCIC2020\val\seq'
+label_dir = r'yourpath\datasets\BCIC2020\val\labels'
+event_dir = r'yourpath\datasets\BCIC2020\val\events'
 for file in tqdm(files_dict['val']):
     subject_id = file.split('.')[0]
     os.makedirs(rf"{seq_dir}\{subject_id}", exist_ok=True)
@@ -82,14 +82,14 @@ for file in tqdm(files_dict['val']):
         torch.save(label_seq, rf"{label_dir}\{subject_id}\{i}.pth")
         torch.save(event_seq, rf"{event_dir}\{subject_id}\{i}.pth")
 
-df = pd.read_excel(r"E:\NIPS2026\datasets\BCIC2020\Track3_Answer Sheet_Test.xlsx")
+df = pd.read_excel(r"yourpath\datasets\BCIC2020\Track3_Answer Sheet_Test.xlsx")
 df_ = df.head(53)
 all_labels = df_.values
 all_labels = all_labels[2:, 1:][:, 1:30:2].transpose(1, 0)
 
-seq_dir = r'E:\NIPS2026\datasets\BCIC2020\test\seq'
-label_dir = r'E:\NIPS2026\datasets\BCIC2020\test\labels'
-event_dir = r'E:\NIPS2026\datasets\BCIC2020\test\events'
+seq_dir = r'yourpath\datasets\BCIC2020\test\seq'
+label_dir = r'yourpath\datasets\BCIC2020\test\labels'
+event_dir = r'yourpath\datasets\BCIC2020\test\events'
 for labels, file in tqdm(zip(all_labels, files_dict['test'])):
     subject_id = file.split('.')[0]
     os.makedirs(rf"{seq_dir}\{subject_id}", exist_ok=True)

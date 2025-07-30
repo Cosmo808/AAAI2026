@@ -20,7 +20,7 @@ def iter_files(rootDir):
 selected_channels = ['EEG Fp1-LE', 'EEG Fp2-LE', 'EEG F3-LE', 'EEG F4-LE', 'EEG C3-LE', 'EEG C4-LE', 'EEG P3-LE',
                      'EEG P4-LE', 'EEG O1-LE', 'EEG O2-LE', 'EEG F7-LE', 'EEG F8-LE', 'EEG T3-LE', 'EEG T4-LE',
                      'EEG T5-LE', 'EEG T6-LE', 'EEG Fz-LE', 'EEG Cz-LE', 'EEG Pz-LE']
-rootDir = r'E:\NIPS2026\datasets\Mumtaz2016'
+rootDir = r'yourpath\datasets\Mumtaz2016'
 files_H, files_MDD = iter_files(rootDir)
 files_H = sorted(files_H)
 files_MDD = sorted(files_MDD)
@@ -62,9 +62,9 @@ param.sr = 200
 b2e = Brain2Event(param)
 
 for files_key in files_dict.keys():
-    seq_dir = rf'E:\NIPS2026\datasets\Mumtaz2016\{files_key}\seq'
-    label_dir = rf'E:\NIPS2026\datasets\Mumtaz2016\{files_key}\labels'
-    event_dir = rf'E:\NIPS2026\datasets\Mumtaz2016\{files_key}\events'
+    seq_dir = rf'yourpath\datasets\Mumtaz2016\{files_key}\seq'
+    label_dir = rf'yourpath\datasets\Mumtaz2016\{files_key}\labels'
+    event_dir = rf'yourpath\datasets\Mumtaz2016\{files_key}\events'
     for file in tqdm(files_dict[files_key]):
         raw = mne.io.read_raw_edf(os.path.join(rootDir, file), preload=True)
         # print(raw.info['ch_names'])

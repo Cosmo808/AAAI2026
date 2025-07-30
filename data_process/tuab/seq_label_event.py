@@ -14,9 +14,9 @@ param.sr = 200
 b2e = Brain2Event(param)
 seq_length = 5
 
-root = r"E:\NIPS2026\datasets\TUAB\edf"
-eeg_dir = r"E:\NIPS2026\datasets\TUAB\edf\processed_eeg"
-pair_dir = r"E:\NIPS2026\datasets\TUAB\edf\processed_pair"
+root = r"yourpath\datasets\TUAB\edf"
+eeg_dir = r"yourpath\datasets\TUAB\edf\processed_eeg"
+pair_dir = r"yourpath\datasets\TUAB\edf\processed_pair"
 
 modes = ['train', 'val', 'test']
 for mode in modes:

@@ -166,9 +166,9 @@ TUEV dataset is downloaded from https://isip.piconepress.com/projects/tuh_eeg/ht
 """
 
 # root = "/data/zcb/data/TUEV/edf"
-root = r"E:\NIPS2026\datasets\TUEV\edf"
+root = r"yourpath\datasets\TUEV\edf"
 # target = "/data/datasets/BigDownstream/TUEV_cbramod"
-target = r"E:\NIPS2026\datasets\TUEV\edf"
+target = r"yourpath\datasets\TUEV\edf"
 train_out_dir = os.path.join(target, "processed_train")
 eval_out_dir = os.path.join(target, "processed_eval")
 if not os.path.exists(train_out_dir):
@@ -201,7 +201,7 @@ EvalOffendingChannel = np.empty([0, 1])
 
 #transfer to train, eval, and test
 # root = "/data/datasets/BigDownstream/TUEV_cbramod"
-root = r"E:\NIPS2026\datasets\TUEV\edf"
+root = r"yourpath\datasets\TUEV\edf"
 seed = 4523
 np.random.seed(seed)
 

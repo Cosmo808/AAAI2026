@@ -143,7 +143,7 @@ if __name__ == "__main__":
     TUAB dataset is downloaded from https://isip.piconepress.com/projects/tuh_eeg/html/downloads.shtml
     """
     # root to abnormal dataset
-    root = r"E:\NIPS2026\datasets\TUAB\edf"
+    root = r"yourpath\datasets\TUAB\edf"
     channel_std = "01_tcp_ar"
 
     seed = 4523

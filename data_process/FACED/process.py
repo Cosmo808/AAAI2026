@@ -7,7 +7,7 @@ from tqdm import tqdm
 import torch
 
 labels = np.array([0, 0, 0, 1, 1, 1, 2, 2, 2, 3, 3, 3, 4, 4, 4, 4, 5, 5, 5, 6, 6, 6, 7, 7, 7, 8, 8, 8])
-root_dir = r'E:\NIPS2026\datasets\FACED\Processed_data'
+root_dir = r'yourpath\datasets\FACED\Processed_data'
 files = [file for file in os.listdir(root_dir)]
 files = sorted(files)
 
@@ -32,9 +32,9 @@ param.sr = 200
 b2e = Brain2Event(param)
 
 for files_key in files_dict.keys():
-    seq_dir = rf'E:\NIPS2026\datasets\FACED\{files_key}\seq'
-    label_dir = rf'E:\NIPS2026\datasets\FACED\{files_key}\labels'
-    event_dir = rf'E:\NIPS2026\datasets\FACED\{files_key}\events'
+    seq_dir = rf'yourpath\datasets\FACED\{files_key}\seq'
+    label_dir = rf'yourpath\datasets\FACED\{files_key}\labels'
+    event_dir = rf'yourpath\datasets\FACED\{files_key}\events'
     for file in tqdm(files_dict[files_key]):
         f = open(os.path.join(root_dir, file), 'rb')
         array = pickle.load(f)

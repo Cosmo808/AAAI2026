@@ -28,7 +28,7 @@ param.fps = 5
 param.sr = sample_rate
 b2e = Brain2Event(param)
 
-base_dir = r"E:\NIPS2026\datasets\broderick2019"
+base_dir = r"yourpath\datasets\broderick2019"
 seq_dir = rf'{base_dir}\seq'
 label_dir = rf'{base_dir}\labels'
 event_dir = rf'{base_dir}\events'

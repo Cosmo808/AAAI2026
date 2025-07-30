@@ -20,11 +20,11 @@ param.fps = 1
 param.sr = 200
 b2e = Brain2Event(param)
 
-dir_path = r'E:\NIPS2026\datasets\ISRUC'
+dir_path = r'yourpath\datasets\ISRUC'
 
-seq_dir = r'E:\NIPS2026\datasets\ISRUC\seq'
-label_dir = r'E:\NIPS2026\datasets\ISRUC\labels'
-event_dir = r'E:\NIPS2026\datasets\ISRUC\events'
+seq_dir = r'yourpath\datasets\ISRUC\seq'
+label_dir = r'yourpath\datasets\ISRUC\labels'
+event_dir = r'yourpath\datasets\ISRUC\events'
 
 psg_f_names = []
 label_f_names = []

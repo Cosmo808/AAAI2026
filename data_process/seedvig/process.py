@@ -5,8 +5,8 @@ import os
 from models.utils import Brain2Event
 import torch
 
-data_dir = r'E:\NIPS2026\datasets\SEED-VIG\Raw_Data'
-labels_dir = r'E:\NIPS2026\datasets\SEED-VIG\perclos_labels'
+data_dir = r'yourpath\datasets\SEED-VIG\Raw_Data'
+labels_dir = r'yourpath\datasets\SEED-VIG\perclos_labels'
 
 files = [file for file in os.listdir(data_dir)]
 files = sorted(files)
@@ -34,9 +34,9 @@ param.sr = 200
 b2e = Brain2Event(param)
 
 for files_key in files_dict.keys():
-    seq_dir = rf'E:\NIPS2026\datasets\SEED-VIG\{files_key}\seq'
-    label_dir = rf'E:\NIPS2026\datasets\SEED-VIG\{files_key}\labels'
-    event_dir = rf'E:\NIPS2026\datasets\SEED-VIG\{files_key}\events'
+    seq_dir = rf'yourpath\datasets\SEED-VIG\{files_key}\seq'
+    label_dir = rf'yourpath\datasets\SEED-VIG\{files_key}\labels'
+    event_dir = rf'yourpath\datasets\SEED-VIG\{files_key}\events'
     for file in tqdm(files_dict[files_key]):
         eegs = scipy.io.loadmat(os.path.join(data_dir, file))['EEG'][0][0][0]
         labels = scipy.io.loadmat(os.path.join(labels_dir, file))['perclos']

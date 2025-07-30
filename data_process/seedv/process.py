@@ -21,7 +21,7 @@ labels_of_sessions = {
     '3': [2, 1, 3, 0, 4, 4, 0, 3, 2, 1, 3, 4, 1, 2, 0, ],
 }
 
-root_dir = r'E:\NIPS2026\datasets\SEED-V\EEG_raw'
+root_dir = r'yourpath\datasets\SEED-V\EEG_raw'
 files = [file for file in os.listdir(root_dir)]
 files = sorted(files)
 print(files)
@@ -61,9 +61,9 @@ for file in files:
         for j in range(15)]
     labels = labels_of_sessions[session_index]
     for mode in trials_split.keys():
-        seq_dir = rf'E:\NIPS2026\datasets\SEED-V\{mode}\seq'
-        label_dir = rf'E:\NIPS2026\datasets\SEED-V\{mode}\labels'
-        event_dir = rf'E:\NIPS2026\datasets\SEED-V\{mode}\events'
+        seq_dir = rf'yourpath\datasets\SEED-V\{mode}\seq'
+        label_dir = rf'yourpath\datasets\SEED-V\{mode}\labels'
+        event_dir = rf'yourpath\datasets\SEED-V\{mode}\events'
         num = 0
         for index in tqdm(trials_split[mode]):
             data = data_trials[index]

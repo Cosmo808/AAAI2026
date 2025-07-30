@@ -458,7 +458,7 @@ class TemporalConv(nn.Module):
         return x
 
 
-def generate_labram(ckpt_path=r"E:\NIPS2026\ckpt\labram-base.pth"):
+def generate_labram(ckpt_path=r"yourpath\ckpt\labram-base.pth"):
     model = NeuralTransformer()
     model.default_cfg = _cfg()
 

@@ -4,13 +4,13 @@ import torch
 
 
 seq_len = 5
-root_dir = r"E:\NIPS2026\datasets\SEED-V"
+root_dir = r"yourpath\datasets\SEED-V"
 modes = ['train', 'val', 'test']
 
 for mode in modes:
-    seq_dir = rf'E:\NIPS2026\datasets\SEED-V\{mode}\seq'
-    label_dir = rf'E:\NIPS2026\datasets\SEED-V\{mode}\labels'
-    event_dir = rf'E:\NIPS2026\datasets\SEED-V\{mode}\events'
+    seq_dir = rf'yourpath\datasets\SEED-V\{mode}\seq'
+    label_dir = rf'yourpath\datasets\SEED-V\{mode}\labels'
+    event_dir = rf'yourpath\datasets\SEED-V\{mode}\events'
 
     subject_ids = os.listdir(seq_dir)
     for subject_id in tqdm(subject_ids):
@@ -27,9 +27,9 @@ for mode in modes:
             labels = torch.cat(labels, dim=0)
             events = torch.cat(events, dim=0)
 
-            new_seq_dir = rf'E:\NIPS2026\datasets\SEED-V\seq_{seq_len}\{mode}\seq\{subject_id}'
-            new_label_dir = rf'E:\NIPS2026\datasets\SEED-V\seq_{seq_len}\{mode}\labels\{subject_id}'
-            new_event_dir = rf'E:\NIPS2026\datasets\SEED-V\seq_{seq_len}\{mode}\events\{subject_id}'
+            new_seq_dir = rf'yourpath\datasets\SEED-V\seq_{seq_len}\{mode}\seq\{subject_id}'
+            new_label_dir = rf'yourpath\datasets\SEED-V\seq_{seq_len}\{mode}\labels\{subject_id}'
+            new_event_dir = rf'yourpath\datasets\SEED-V\seq_{seq_len}\{mode}\events\{subject_id}'
             os.makedirs(new_seq_dir, exist_ok=True)
             os.makedirs(new_label_dir, exist_ok=True)
             os.makedirs(new_event_dir, exist_ok=True)

@@ -4,7 +4,7 @@ from models.utils import Brain2Event
 import torch
 from tqdm import tqdm
 
-root_dir = r'E:\NIPS2026\datasets\MentalArithmetic'
+root_dir = r'yourpath\datasets\MentalArithmetic'
 files = [file for file in os.listdir(root_dir)]
 files = sorted(files)
 print(files)
@@ -35,9 +35,9 @@ param.sr = 200
 b2e = Brain2Event(param)
 
 for files_key in files_dict.keys():
-    seq_dir = rf'E:\NIPS2026\datasets\MentalArithmetic\{files_key}\seq'
-    label_dir = rf'E:\NIPS2026\datasets\MentalArithmetic\{files_key}\labels'
-    event_dir = rf'E:\NIPS2026\datasets\MentalArithmetic\{files_key}\events'
+    seq_dir = rf'yourpath\datasets\MentalArithmetic\{files_key}\seq'
+    label_dir = rf'yourpath\datasets\MentalArithmetic\{files_key}\labels'
+    event_dir = rf'yourpath\datasets\MentalArithmetic\{files_key}\events'
     for file in tqdm(files_dict[files_key]):
         if '.edf' not in file:
             continue
